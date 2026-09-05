@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_prev"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:text="‹"
+            android:textSize="18sp"
+            android:textColor="#5B5F66"
+            android:textStyle="bold"
+            android:background="@drawable/widget_nav_button" />
+
+        <TextView
+            android:id="@+id/tv_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#21252C"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:text="Aujourd'hui" />
+
+        <Button
+            android:id="@+id/btn_next"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:text="›"
+            android:textSize="18sp"
+            android:textColor="#5B5F66"
+            android:textStyle="bold"
+            android:background="@drawable/widget_nav_button" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EAE5D8"
+        android:layout_marginBottom="6dp" />
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginBottom="6dp"
+        android:max="100"
+        android:progress="0"
+        android:progressTint="#2F5D50"
+        android:progressBackgroundTint="#EAE5D8"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/tasks_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rien de prévu"
+            android:textColor="#9B9C96"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:paddingTop="10dp"
+            android:visibility="gone" />
+
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tv_task_1" style="@style/WidgetTaskLine" />
+            <ProgressBar android:id="@+id/pb_task_1" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="3dp"
+                android:max="100" android:progress="0" android:visibility="gone"
+                android:progressTint="#2F5D50" android:layout_marginBottom="4dp" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tv_task_2" style="@style/WidgetTaskLine" />
+            <ProgressBar android:id="@+id/pb_task_2" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="3dp"
+                android:max="100" android:progress="0" android:visibility="gone"
+                android:progressTint="#2F5D50" android:layout_marginBottom="4dp" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tv_task_3" style="@style/WidgetTaskLine" />
+            <ProgressBar android:id="@+id/pb_task_3" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="3dp"
+                android:max="100" android:progress="0" android:visibility="gone"
+                android:progressTint="#2F5D50" android:layout_marginBottom="4dp" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tv_task_4" style="@style/WidgetTaskLine" />
+            <ProgressBar android:id="@+id/pb_task_4" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="3dp"
+                android:max="100" android:progress="0" android:visibility="gone"
+                android:progressTint="#2F5D50" android:layout_marginBottom="4dp" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tv_task_5" style="@style/WidgetTaskLine" />
+            <ProgressBar android:id="@+id/pb_task_5" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="3dp"
+                android:max="100" android:progress="0" android:visibility="gone"
+                android:progressTint="#2F5D50" android:layout_marginBottom="4dp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

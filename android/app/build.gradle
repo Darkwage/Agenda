@@ -1,0 +1,76 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.arwin.agenda"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.arwin.agenda"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // GITHUB_RUN_NUMBER increases automatically on every GitHub Actions
+        // build, so each APK has a strictly higher version than the last -
+        // required for Android to accept it as a clean update in place.
+        versionCode (System.getenv("GITHUB_RUN_NUMBER") ? System.getenv("GITHUB_RUN_NUMBER").toInteger() : 1)
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // Fixed signing key so every APK built by GitHub Actions - today, next
+    // month, next year - carries the exact same signature. This is what
+    // lets Android treat each new build as an UPDATE of the same app
+    // (preserving all locally stored tasks) instead of a conflicting,
+    // different app that must be uninstalled first (which would wipe data).
+    // The keystore itself is never committed to the repo: the CI workflow
+    // recreates it at build time from a GitHub secret.
+    def agendaKeystorePath = System.getenv("AGENDA_KEYSTORE_PATH")
+    if (agendaKeystorePath != null && file(agendaKeystorePath).exists()) {
+        signingConfigs {
+            debug {
+                storeFile file(agendaKeystorePath)
+                storePassword System.getenv("AGENDA_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("AGENDA_KEY_ALIAS")
+                keyPassword System.getenv("AGENDA_KEY_PASSWORD")
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

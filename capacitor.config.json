@@ -1,0 +1,6 @@
+{
+  "appId": "com.arwin.agenda",
+  "appName": "Agenda",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
