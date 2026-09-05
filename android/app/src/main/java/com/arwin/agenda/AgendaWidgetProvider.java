@@ -68,6 +68,30 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     }
 
     private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        try {
+            buildAndPushWidget(context, appWidgetManager, appWidgetId);
+        } catch (Exception e) {
+            // Whatever went wrong (malformed data, a device quirk...), never
+            // leave the widget on the system's ugly "problem loading widget"
+            // screen - fall back to a minimal, always-safe view instead.
+            RemoteViews fallback = new RemoteViews(context.getPackageName(), R.layout.agenda_widget);
+            fallback.setTextViewText(R.id.tv_date, "Agenda");
+            fallback.setViewVisibility(R.id.tv_empty, android.view.View.VISIBLE);
+            fallback.setTextViewText(R.id.tv_empty, "Ouvrez l'appli pour actualiser");
+            for (int id : new int[]{ R.id.tv_task_1, R.id.tv_task_2, R.id.tv_task_3, R.id.tv_task_4, R.id.tv_task_5 }) {
+                fallback.setViewVisibility(id, android.view.View.GONE);
+            }
+            Intent openAppIntent = new Intent(context, MainActivity.class);
+            PendingIntent openAppPending = PendingIntent.getActivity(
+                    context, appWidgetId, openAppIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            fallback.setOnClickPendingIntent(R.id.tv_date, openAppPending);
+            appWidgetManager.updateAppWidget(appWidgetId, fallback);
+        }
+    }
+
+    private void buildAndPushWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.agenda_widget);
 
         SharedPreferences state = context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE);
@@ -95,7 +119,6 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         // --- Read & display tasks for the target date ---
         ArrayList<TaskLine> lines = readTaskLinesForDate(context, targetDateStr);
         int[] taskViewIds = { R.id.tv_task_1, R.id.tv_task_2, R.id.tv_task_3, R.id.tv_task_4, R.id.tv_task_5 };
-        int[] progressViewIds = { R.id.pb_task_1, R.id.pb_task_2, R.id.pb_task_3, R.id.pb_task_4, R.id.pb_task_5 };
 
         if (lines.isEmpty()) {
             views.setViewVisibility(R.id.tv_empty, android.view.View.VISIBLE);
@@ -103,23 +126,20 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             views.setViewVisibility(R.id.tv_empty, android.view.View.GONE);
         }
 
-        // The progress bar always reflects how far along the current task is,
-        // regardless of any "silence alerts" preference - that setting only
-        // controls sound/notifications in the phone app, never this bar.
+        // Progress is shown as plain text ("· en cours, 40 %") rather than a
+        // native ProgressBar widget: custom-styled ProgressBars inside
+        // AppWidgets are unreliable across Android skins (Samsung, Xiaomi...)
+        // and can crash the widget host on some devices. This is always
+        // shown for the active task regardless of the "silence alerts"
+        // preference - that setting only controls sound/notifications in
+        // the phone app, never this indicator.
         for (int i = 0; i < taskViewIds.length; i++) {
             if (i < lines.size()) {
                 TaskLine line = lines.get(i);
                 views.setTextViewText(taskViewIds[i], line.text);
                 views.setViewVisibility(taskViewIds[i], android.view.View.VISIBLE);
-                if (line.progress >= 0) {
-                    views.setProgressBar(progressViewIds[i], 100, line.progress, false);
-                    views.setViewVisibility(progressViewIds[i], android.view.View.VISIBLE);
-                } else {
-                    views.setViewVisibility(progressViewIds[i], android.view.View.GONE);
-                }
             } else {
                 views.setViewVisibility(taskViewIds[i], android.view.View.GONE);
-                views.setViewVisibility(progressViewIds[i], android.view.View.GONE);
             }
         }
 
@@ -148,11 +168,10 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         return label;
     }
 
-    /** A single rendered line for the widget, with optional live progress (0-100, or -1 if not currently active). */
+    /** A single rendered line of text for the widget. */
     private static class TaskLine {
         String text;
-        int progress;
-        TaskLine(String text, int progress) { this.text = text; this.progress = progress; }
+        TaskLine(String text) { this.text = text; }
     }
 
     private ArrayList<TaskLine> readTaskLinesForDate(Context context, String dateStr) {
@@ -194,20 +213,20 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                 int duration = t.optInt("duration", 0);
                 String prefix = time.isEmpty() ? "· " : (time + " · ");
                 String line = prefix + title;
-                if (done) line = "✓ " + line;
 
-                int progress = -1;
                 if (isRealToday && !done && !time.isEmpty() && duration > 0) {
                     try {
                         String[] hm = time.split(":");
                         int startMin = Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);
                         int endMin = startMin + duration;
                         if (nowMinutes >= startMin && nowMinutes < endMin) {
-                            progress = Math.round(((float) (nowMinutes - startMin) / duration) * 100);
+                            int pct = Math.round(((float) (nowMinutes - startMin) / duration) * 100);
+                            line = "▶ " + line + " (" + pct + " %)";
                         }
                     } catch (Exception ignored) {}
                 }
-                result.add(new TaskLine(line, progress));
+                if (done) line = "✓ " + line;
+                result.add(new TaskLine(line));
             }
         } catch (Exception e) {
             // malformed / not-yet-synced data: show nothing rather than crash
