@@ -76,27 +76,6 @@
     padding:calc(28px + env(safe-area-inset-top)) calc(32px + env(safe-area-inset-right)) calc(90px + env(safe-area-inset-bottom)) calc(32px + env(safe-area-inset-left));
   }
 
-  /* ---------- install-as-app hint ---------- */
-  .install-hint{
-    display:none; align-items:flex-start; gap:12px;
-    background:var(--accent-soft); border:1px solid var(--accent);
-    border-radius:var(--radius-m); padding:12px 14px; margin-bottom:18px;
-    font-size:12.5px; color:var(--ink); line-height:1.45;
-  }
-  .install-hint.is-visible{ display:flex; }
-  .install-hint .ih-icon{ font-size:18px; flex:none; line-height:1; }
-  .install-hint .ih-body{ flex:1; }
-  .install-hint strong{ font-family:var(--font-display); font-style:italic; font-weight:600; }
-  .install-hint button{
-    flex:none; background:none; border:none; color:var(--accent-dark); font-size:16px;
-    line-height:1; padding:2px 4px; opacity:.7;
-  }
-  .install-hint button:hover{ opacity:1; }
-  .install-hint kbd{
-    font-family:var(--font-mono); font-size:11px; background:var(--surface); border:1px solid var(--line);
-    border-radius:4px; padding:1px 5px;
-  }
-
   .app-header{
     display:flex; align-items:flex-end; justify-content:space-between;
     margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid var(--line);
@@ -400,12 +379,15 @@
   .day-track.is-today{ background-color:rgba(47,93,80,0.04); }
 
   .task-block{
-    position:absolute; left:3px; right:3px; border-radius:6px; padding:4px 7px;
+    position:absolute; left:3px; right:3px; border-radius:6px; padding:3px 5px;
     background:var(--cat-soft, var(--accent-soft)); border-left:3px solid var(--cat, var(--accent));
-    overflow:hidden; font-size:11.5px; line-height:1.3; box-shadow:0 1px 3px rgba(0,0,0,.06);
+    overflow:hidden; font-size:10.5px; line-height:1.15; box-shadow:0 1px 3px rgba(0,0,0,.06);
   }
-  .task-block .tb-title{ font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .task-block .tb-time{ font-family:var(--font-mono); font-size:10px; color:var(--ink-soft); }
+  .task-block .tb-title{
+    font-weight:600; font-size:10.5px; color:var(--ink);
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .task-block .tb-time{ font-family:var(--font-mono); font-size:9px; color:var(--ink-soft); }
   .task-block.done{ opacity:.5; }
   .task-block.done .tb-title{ text-decoration:line-through; }
 
@@ -546,20 +528,34 @@
       flex:1;
     }
     .view-tabs.mobile-only button.active{ background:var(--accent); color:var(--accent-ink); }
-    .calendar-panel.hide-mobile, .sidebar-right.hide-mobile{ display:none; }
+    .calendar-panel.hide-mobile, .sidebar-right.hide-mobile, .sidebar-left.hide-mobile{ display:none; }
+    .sidebar-left{ display:block; }
     .month-cell{ min-height:72px; }
     .grid-scroll{ max-height:520px; }
+
+    /* Week view on phones: 7 full-text columns never fit a narrow screen,
+       especially once two tasks overlap. Instead of shrinking text into
+       illegibility, give each day a fixed, readable width and let the
+       whole grid scroll sideways - the time gutter stays put. Day view
+       (single column) is untouched and keeps filling the screen width. */
+    .is-week .grid-scroll{ overflow-x:auto; }
+    .is-week .week-header-row{ width:max-content; min-width:100%; }
+    .is-week .time-grid{ width:max-content; min-width:100%; }
+    .is-week .day-track-header{ flex:none; width:96px; }
+    .is-week .day-track{ flex:none; width:96px; }
+    .is-week .time-gutter{ position:sticky; left:0; z-index:3; background:var(--surface); }
+    .is-week .week-header-row .gutter-spacer{ position:sticky; left:0; z-index:3; background:var(--surface); }
+
+    /* Without this, the calendar-panel grid item refuses to shrink below
+       the week grid's natural (wide) content size, pushing the WHOLE page
+       into horizontal scroll instead of containing it inside .grid-scroll
+       alone. min-width:0 overrides that default grid/flex-item behavior. */
+    .calendar-panel, #calendar-body, .time-grid-wrap, .grid-scroll{ min-width:0; }
   }
 </style>
 </head>
 <body>
 <div class="app">
-
-  <div class="install-hint" id="install-hint">
-    <span class="ih-icon">📲</span>
-    <span class="ih-body" id="install-hint-text"></span>
-    <button type="button" id="install-hint-close" aria-label="Fermer">✕</button>
-  </div>
 
   <header class="app-header">
     <div class="brand">
@@ -571,6 +567,7 @@
   <nav class="view-tabs mobile-only">
     <button type="button" data-panel="calendar" class="active">Calendrier</button>
     <button type="button" data-panel="list">Liste</button>
+    <button type="button" data-panel="left">Réglages</button>
   </nav>
 
   <div class="layout">
@@ -753,6 +750,12 @@
   </div>
 </div>
 
+<!-- Capacitor bridge + plugin JS glue. Without these, window.Capacitor.Plugins
+     stays empty in an unbundled app like this one, since each plugin's
+     registerPlugin() call needs its own script to actually run. -->
+<script src="capacitor-plugins/capacitor-core.js"></script>
+<script src="capacitor-plugins/capacitor-preferences.js"></script>
+<script src="capacitor-plugins/capacitor-local-notifications.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1501,7 +1504,7 @@
 
   function renderDayOrWeek(days, hourHeight){
     var isWeek = days.length > 1;
-    var html = '<div class="time-grid-wrap"><div class="grid-scroll"><div class="sticky-head">';
+    var html = '<div class="time-grid-wrap' + (isWeek ? ' is-week' : '') + '"><div class="grid-scroll"><div class="sticky-head">';
 
     if(isWeek){
       html += '<div class="week-header-row"><div class="gutter-spacer"></div>';
@@ -1770,31 +1773,12 @@
   function showPanel(name){
     document.getElementById('panel-calendar').classList.toggle('hide-mobile', name !== 'calendar');
     document.getElementById('panel-list').classList.toggle('hide-mobile', name !== 'list');
+    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left');
     document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel === name); });
   }
   document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
     btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
   });
-
-  /* ---------------- install-as-app hint ---------------- */
-  function initInstallHint(){
-    var banner = document.getElementById('install-hint');
-    var textEl = document.getElementById('install-hint-text');
-    var closeBtn = document.getElementById('install-hint-close');
-    var DISMISS_KEY = 'agenda_install_hint_dismissed';
-    var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    var isSmallScreen = window.matchMedia('(max-width: 980px)').matches;
-    var ua = navigator.userAgent || '';
-    var isIOS = /iphone|ipad|ipod/i.test(ua);
-    var isAndroid = /android/i.test(ua);
-    if(isStandalone || !isSmallScreen) return;
-    if(localStorage.getItem(DISMISS_KEY) === '1') return;
-    if(!isIOS && !isAndroid) return;
-    if(isIOS){ textEl.innerHTML = '<strong>Installez Agenda</strong> comme une application&nbsp;: appuyez sur <kbd>􀈂 Partager</kbd> puis « Sur l\u2019écran d\u2019accueil ».'; }
-    else { textEl.innerHTML = '<strong>Installez Agenda</strong> comme une application&nbsp;: ouvrez le menu <kbd>⋮</kbd> du navigateur puis « Ajouter à l\u2019écran d\u2019accueil » (ou « Installer l\u2019application »).'; }
-    banner.classList.add('is-visible');
-    closeBtn.addEventListener('click', function(){ banner.classList.remove('is-visible'); localStorage.setItem(DISMISS_KEY, '1'); });
-  }
 
   /* ---------------- init ---------------- */
   function renderAll(){ renderList(); renderCalendar(); }
@@ -1823,13 +1807,7 @@
   renderCategoryManager();
   applyStartupParams();
   renderAll();
-  initInstallHint();
-
-  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
-    window.addEventListener('load', function(){
-      navigator.serviceWorker.register('service-worker.js').catch(function(err){ console.warn('Service worker non enregistré :', err); });
-    });
-  }
+  syncTasksToWidget();
 
 })();
 </script>
