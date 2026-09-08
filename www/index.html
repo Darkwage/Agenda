@@ -193,6 +193,13 @@
 
   /* ---------- categories manager ---------- */
   .cat-manager-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .diag-output{
+    font-family:var(--font-mono); font-size:11.5px; line-height:1.6; background:var(--paper);
+    border:1px solid var(--line-soft); border-radius:var(--radius-s); padding:10px 12px;
+    white-space:pre-wrap; word-break:break-word; min-height:20px; color:var(--ink-soft);
+  }
+  .diag-output .ok{ color:#3D6B4F; font-weight:600; }
+  .diag-output .fail{ color:var(--danger); font-weight:600; }
   .cat-group-select{
     font-size:11.5px; color:var(--ink-soft); border:1px solid var(--line); border-radius:6px;
     background:var(--surface); padding:3px 5px; max-width:108px; flex:none;
@@ -618,6 +625,15 @@
           <input type="file" id="import-file-input" accept=".json,application/json,text/plain" style="display:none;">
         </details>
       </section>
+
+      <section class="card">
+        <details class="collapsible" id="diag-details">
+          <summary>Diagnostic widget <span class="chev">▸</span></summary>
+          <div class="field-hint" style="margin-bottom:10px;">Vérifie pourquoi les tâches n'arrivent pas jusqu'au widget d'écran d'accueil.</div>
+          <div id="diag-output" class="diag-output"></div>
+          <button type="button" class="btn-primary" id="diag-run-btn" style="margin-top:10px;">Lancer le diagnostic</button>
+        </details>
+      </section>
     </aside>
 
     <main class="calendar-panel" id="panel-calendar">
@@ -814,7 +830,17 @@
   function loadTasks(){
     try{ var raw = localStorage.getItem(TASKS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; }
   }
-  function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} }
+  function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); }
+
+  // Mirrors the task list into native storage so the Android home screen
+  // widget (which runs outside the WebView) can read it. No-op on the web.
+  function syncTasksToWidget(){
+    try{
+      if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
+        window.Capacitor.Plugins.Preferences.set({ key: 'agenda_widget_tasks', value: JSON.stringify(tasks) });
+      }
+    }catch(e){}
+  }
 
   function loadCategories(){
     try{
