@@ -833,11 +833,18 @@
   function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); }
 
   // Mirrors the task list into native storage so the Android home screen
-  // widget (which runs outside the WebView) can read it. No-op on the web.
+  // widget (which runs outside the WebView) can read it. Each task is
+  // enriched with its resolved category color, since the widget only has
+  // access to this synced copy - not the categories list itself. No-op on
+  // the web.
   function syncTasksToWidget(){
     try{
       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-        window.Capacitor.Plugins.Preferences.set({ key: 'agenda_widget_tasks', value: JSON.stringify(tasks) });
+        var enriched = tasks.map(function(t){
+          var cat = getCategory(t.category);
+          return Object.assign({}, t, { color: cat.color });
+        });
+        window.Capacitor.Plugins.Preferences.set({ key: 'agenda_widget_tasks', value: JSON.stringify(enriched) });
       }
     }catch(e){}
   }
@@ -849,7 +856,7 @@
     }catch(e){}
     return DEFAULT_CATEGORIES.slice();
   }
-  function saveCategories(){ try{ localStorage.setItem(CATS_KEY, JSON.stringify(CATEGORIES)); }catch(e){} }
+  function saveCategories(){ try{ localStorage.setItem(CATS_KEY, JSON.stringify(CATEGORIES)); }catch(e){} syncTasksToWidget(); }
 
   function loadGroups(){
     try{
@@ -1986,6 +1993,40 @@
   }
   document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
     btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
+  });
+
+  /* ---------------- widget diagnostics ---------------- */
+  document.getElementById('diag-run-btn').addEventListener('click', function(){
+    var out = document.getElementById('diag-output');
+    var lines = [];
+    var hasCapacitor = !!(window.Capacitor);
+    lines.push(hasCapacitor
+      ? '<span class="ok">✔ Pont Capacitor détecté</span>'
+      : '<span class="fail">✘ Pont Capacitor absent</span>');
+
+    var isNative = hasCapacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    lines.push('Plateforme : ' + (hasCapacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'inconnue') + (isNative ? ' (native)' : ' (web)'));
+
+    var hasPrefs = !!(hasCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences);
+    lines.push(hasPrefs
+      ? '<span class="ok">✔ Greffon Préférences disponible</span>'
+      : '<span class="fail">✘ Greffon Préférences introuvable</span>');
+
+    out.innerHTML = lines.join('<br>') + '<br>⏳ Test d\u2019écriture/lecture…';
+
+    if(!hasPrefs){
+      out.innerHTML += '<br><span class="fail">Impossible de tester : greffon absent.</span>';
+      return;
+    }
+
+    syncTasksToWidget();
+    window.Capacitor.Plugins.Preferences.get({ key:'agenda_widget_tasks' }).then(function(res){
+      var count = 0;
+      try{ count = JSON.parse(res.value || '[]').length; }catch(e){}
+      out.innerHTML = lines.join('<br>') + '<br><span class="ok">✔ Écriture/lecture réussie</span> — ' + count + ' tâche(s) transmise(s) au widget.';
+    }).catch(function(err){
+      out.innerHTML = lines.join('<br>') + '<br><span class="fail">✘ Erreur : ' + String(err) + '</span>';
+    });
   });
 
   /* ---------------- init ---------------- */
