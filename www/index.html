@@ -400,8 +400,8 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
   .task-block .tb-time{ font-family:var(--font-mono); font-size:9px; color:var(--ink-soft); }
-  .task-block.done{ opacity:.5; }
-  .task-block.done .tb-title{ text-decoration:line-through; }
+  .task-block.done{ --cat:#3D6B4F !important; --cat-soft:#DCEAE1 !important; }
+  .task-block.done .tb-title{ text-decoration:line-through; opacity:.75; }
 
   /* month view */
   .month-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:1px; background:var(--line-soft); border:1px solid var(--line-soft); border-radius:var(--radius-m); overflow:hidden; width:100%; }
@@ -421,7 +421,8 @@
     border-left:2.5px solid var(--cat, var(--accent)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     color:var(--ink); cursor:pointer;
   }
-  .month-chip.done{ opacity:.5; text-decoration:line-through; }
+  .month-chip.done{ --cat:#3D6B4F !important; --cat-soft:#DCEAE1 !important; text-decoration:line-through; opacity:.8; }
+  .allday-chip.done{ --cat:#3D6B4F !important; --cat-soft:#DCEAE1 !important; text-decoration:line-through; opacity:.8; }
   .month-chip.is-deadline{ background:transparent; border-style:dashed; }
   .month-more{ font-size:10px; color:var(--ink-faint); font-family:var(--font-mono); padding-left:3px; }
 
@@ -794,6 +795,16 @@
 (function(){
   "use strict";
 
+  // WidgetBridge is a small custom native plugin (not an npm package, so it
+  // has no bundled JS glue file like Preferences/LocalNotifications do) -
+  // register its JS-side proxy manually so window.Capacitor.Plugins.WidgetBridge
+  // becomes callable and routes to the native Android implementation.
+  try{
+    if(window.Capacitor && window.Capacitor.registerPlugin && !(window.Capacitor.Plugins && window.Capacitor.Plugins.WidgetBridge)){
+      window.Capacitor.registerPlugin('WidgetBridge', {});
+    }
+  }catch(e){}
+
   /* ---------------- default categories ---------------- */
   var DEFAULT_CATEGORIES = [
     { key:'travail',   label:'Travail',   color:'#3B6E8F' },
@@ -835,8 +846,10 @@
   // Mirrors the task list into native storage so the Android home screen
   // widget (which runs outside the WebView) can read it. Each task is
   // enriched with its resolved category color, since the widget only has
-  // access to this synced copy - not the categories list itself. No-op on
-  // the web.
+  // access to this synced copy - not the categories list itself. Once the
+  // write completes, WidgetBridge.refresh() asks the widget to redraw right
+  // away instead of waiting for Android's normal ~30-minute update cycle.
+  // No-op on the web.
   function syncTasksToWidget(){
     try{
       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
@@ -844,7 +857,11 @@
           var cat = getCategory(t.category);
           return Object.assign({}, t, { color: cat.color });
         });
-        window.Capacitor.Plugins.Preferences.set({ key: 'agenda_widget_tasks', value: JSON.stringify(enriched) });
+        window.Capacitor.Plugins.Preferences.set({ key: 'agenda_widget_tasks', value: JSON.stringify(enriched) }).then(function(){
+          try{
+            if(window.Capacitor.Plugins.WidgetBridge){ window.Capacitor.Plugins.WidgetBridge.refresh().catch(function(){}); }
+          }catch(e){}
+        });
       }
     }catch(e){}
   }
@@ -1736,7 +1753,7 @@
       tasksForDate(ds).filter(function(t){ return !t.time; }).forEach(function(t){
         var cat = getCategory(t.category);
         var spanTag = (t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
-        html += '<span class="allday-chip" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'"><span class="dot"></span>' + escapeHtml(t.title) + spanTag + '</span>';
+        html += '<span class="allday-chip' + (t.done?' done':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'"><span class="dot"></span>' + escapeHtml(t.title) + spanTag + '</span>';
       });
       deadlineMarkersForDate(ds).forEach(function(t){
         var cat = getCategory(t.category);
@@ -1769,9 +1786,10 @@
         var leftPct = t._col * widthPct;
         var cat = getCategory(t.category);
         var flag = t.deadline ? '🚩 ' : '';
+        var doneMark = t.done ? '✓ ' : '';
         var progressBar = isTaskActiveNow(t) ? '<div class="task-progress" style="width:' + taskProgressPct(t) + '%"></div>' : '';
         inner += '<div class="task-block' + (t.done?' done':'') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
-          '<div class="tb-title">' + flag + escapeHtml(t.title) + '</div>' +
+          '<div class="tb-title">' + doneMark + flag + escapeHtml(t.title) + '</div>' +
           '<div class="tb-time">' + t.time + ' · ' + formatDuration(t.duration) + '</div>' +
           progressBar +
         '</div>';
@@ -1802,13 +1820,7 @@
         openModal('create', { date: track.dataset.date, time: pad(hour) + ':' + pad(minute) });
       });
     });
-    calendarBody.querySelectorAll('[data-open]').forEach(function(el){
-      el.addEventListener('click', function(ev){
-        ev.stopPropagation();
-        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-        if(t) openModal('edit', t);
-      });
-    });
+    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
   }
 
   function renderMonth(ref){
@@ -1866,17 +1878,36 @@
         openModal('create', { date: cell.dataset.date });
       });
     });
-    calendarBody.querySelectorAll('[data-open]').forEach(function(el){
-      el.addEventListener('click', function(ev){
-        ev.stopPropagation();
-        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-        if(t) openModal('edit', t);
-      });
-    });
+    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
   }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+  }
+
+  /** Wires a [data-open] element (task block, month chip, all-day chip) so
+      a single click opens it for editing, while a double-click instead
+      toggles it done/not-done right there in the calendar - no need to
+      open the task first. A short timer tells the two apart: a click
+      waits briefly before opening the modal, and is cancelled if a second
+      click (dblclick) arrives in that window. */
+  function wireOpenElement(el){
+    var pendingClick = null;
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
+      pendingClick = setTimeout(function(){
+        pendingClick = null;
+        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+        if(t) openModal('edit', t);
+      }, 260);
+    });
+    el.addEventListener('dblclick', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
+      var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+      if(t){ t.done = !t.done; saveTasks(); renderAll(); }
+    });
   }
 
   /* ---------------- toolbar controls ---------------- */
@@ -1898,8 +1929,9 @@
 
   document.getElementById('show-completed').addEventListener('change', function(e){ filters.showCompleted = e.target.checked; renderAll(); });
 
-  /* ---------------- notifications (sound) toggle ---------------- */
+  /* ---------------- notifications (sound + vibration) toggle ---------------- */
   var NOTIF_KEY = 'agenda_notif_enabled';
+  var TASK_CHANGE_CHANNEL = 'agenda-task-changes';
   var notifCheckbox = document.getElementById('notif-enabled');
   notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
 
@@ -1907,16 +1939,35 @@
     return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
   }
 
+  // A dedicated channel with a short custom beep + vibration, so the alert
+  // reads as a discreet "task change" cue rather than a generic, possibly
+  // loud system notification sound. Channel settings are fixed by Android
+  // after first creation, so this only needs to run once.
+  function ensureTaskChangeChannel(nativeLN){
+    try{
+      nativeLN.createChannel({
+        id: TASK_CHANGE_CHANNEL,
+        name: 'Changement de tâche',
+        description: 'Bip discret et vibration au démarrage d\u2019une tâche.',
+        sound: 'beep.wav',
+        vibration: true,
+        importance: 3
+      });
+    }catch(e){}
+  }
+
   notifCheckbox.addEventListener('change', function(e){
     if(!e.target.checked){ localStorage.setItem(NOTIF_KEY, '0'); return; }
 
     var nativeLN = nativeLocalNotifications();
     if(nativeLN){
-      // Real Android app: use the native notification channel (works
-      // reliably in the background, plays the device's default sound).
+      // Real Android app: use a dedicated channel (short beep + vibration)
+      // rather than the device's generic, possibly loud default sound.
       nativeLN.requestPermissions().then(function(res){
-        if(res && res.display === 'granted'){ localStorage.setItem(NOTIF_KEY, '1'); }
-        else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
+        if(res && res.display === 'granted'){
+          ensureTaskChangeChannel(nativeLN);
+          localStorage.setItem(NOTIF_KEY, '1');
+        } else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
       });
     } else if('Notification' in window){
       // Plain browser fallback (only relevant if this page is opened
@@ -1945,6 +1996,7 @@
         id: Math.floor(Math.random() * 2147483647),
         title: '▶ ' + t.title,
         body: body,
+        channelId: TASK_CHANGE_CHANNEL,
         schedule: { at: new Date(Date.now() + 300) }
       }] }).catch(function(){});
     } else if('Notification' in window && Notification.permission === 'granted'){
