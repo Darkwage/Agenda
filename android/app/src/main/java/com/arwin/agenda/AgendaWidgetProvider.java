@@ -145,7 +145,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < allDay.size() && i < 3; i++) {
                 if (i > 0) sb.append("  ·  ");
-                sb.append(allDay.get(i).title);
+                TaskInfo ad = allDay.get(i);
+                sb.append(ad.done ? "\u2713 " : "").append(ad.title);
             }
             views.setTextViewText(R.id.tv_allday, sb.toString());
             views.setViewVisibility(R.id.tv_allday, android.view.View.VISIBLE);
@@ -221,7 +222,11 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             if (right <= left) right = left + 4 * density;
 
             int baseColor;
-            try { baseColor = Color.parseColor(t.color); } catch (Exception e) { baseColor = Color.parseColor("#2F5D50"); }
+            if (t.done) {
+                baseColor = Color.parseColor("#3D6B4F"); // matches the app's "done" green
+            } else {
+                try { baseColor = Color.parseColor(t.color); } catch (Exception e) { baseColor = Color.parseColor("#2F5D50"); }
+            }
             int softColor = mixWithWhite(baseColor, 0.82f);
 
             RectF rect = new RectF(left, top, right, bottom);
@@ -246,7 +251,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             canvas.clipRect(rect);
             float textX = left + 6 * density;
             float textY = top + 12 * density;
-            String title = ellipsize(t.title, titlePaint, right - textX - 4 * density);
+            String rawTitle = (t.done ? "\u2713 " : "") + t.title;
+            String title = ellipsize(rawTitle, titlePaint, right - textX - 4 * density);
             canvas.drawText(title, textX, textY, titlePaint);
             if (bottom - top > 24 * density) {
                 canvas.drawText(t.time, textX, textY + 11 * density, timePaint);
@@ -332,6 +338,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         int duration, startMin;
         int progressPct = -1; // 0-100 while in progress, -1 otherwise
         int col = 0, totalCols = 1;
+        boolean done = false;
     }
 
     private ArrayList<TaskInfo> readTasksForDate(Context context, String dateStr, boolean isRealToday) {
@@ -348,18 +355,18 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             for (int i = 0; i < all.length(); i++) {
                 JSONObject t = all.getJSONObject(i);
                 if (!dateStr.equals(t.optString("date", ""))) continue;
-                if (t.optBoolean("done", false)) continue;
 
                 TaskInfo info = new TaskInfo();
                 info.title = t.optString("title", "");
                 info.time = t.optString("time", "");
                 info.duration = t.optInt("duration", 0);
                 info.color = t.optString("color", "#2F5D50");
+                info.done = t.optBoolean("done", false);
                 if (!info.time.isEmpty()) {
                     try {
                         String[] hm = info.time.split(":");
                         info.startMin = Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);
-                        if (isRealToday && info.duration > 0) {
+                        if (isRealToday && !info.done && info.duration > 0) {
                             int endMin = info.startMin + info.duration;
                             if (nowMinutes >= info.startMin && nowMinutes < endMin) {
                                 info.progressPct = Math.round(((float) (nowMinutes - info.startMin) / info.duration) * 100);
