@@ -1736,6 +1736,16 @@
 
   function renderDayOrWeek(days, hourHeight){
     var isWeek = days.length > 1;
+
+    // Rebuilding the grid below replaces the .grid-scroll element entirely,
+    // which would otherwise silently reset the user's scroll position (e.g.
+    // back to 6:00, or to the left edge of a horizontally-scrolled week)
+    // every time something re-renders - including the once-a-minute clock
+    // tick and marking a task done. Capture it here, restore it at the end.
+    var prevScroll = null;
+    var existingGridScroll = calendarBody.querySelector('.grid-scroll');
+    if(existingGridScroll){ prevScroll = { top: existingGridScroll.scrollTop, left: existingGridScroll.scrollLeft }; }
+
     var html = '<div class="time-grid-wrap' + (isWeek ? ' is-week' : '') + '"><div class="grid-scroll"><div class="sticky-head">';
 
     if(isWeek){
@@ -1821,6 +1831,11 @@
       });
     });
     calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+
+    if(prevScroll){
+      var newGridScroll = calendarBody.querySelector('.grid-scroll');
+      if(newGridScroll){ newGridScroll.scrollTop = prevScroll.top; newGridScroll.scrollLeft = prevScroll.left; }
+    }
   }
 
   function renderMonth(ref){
