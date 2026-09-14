@@ -98,15 +98,16 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             // Whatever went wrong (malformed data, a device quirk...), never
             // leave the widget on the system's ugly "problem loading widget"
             // screen - fall back to a minimal, always-safe view instead.
+            // Prev/next and tap-to-open stay fully wired here too, so a
+            // hiccup on one day never traps the widget in a broken state.
             RemoteViews fallback = new RemoteViews(context.getPackageName(), R.layout.agenda_widget);
             fallback.setTextViewText(R.id.tv_date, "Agenda");
             fallback.setViewVisibility(R.id.tv_allday, android.view.View.GONE);
-            Intent openAppIntent = new Intent(context, MainActivity.class);
-            PendingIntent openAppPending = PendingIntent.getActivity(
-                    context, appWidgetId, openAppIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
+            fallback.setOnClickPendingIntent(R.id.btn_prev, buildActionIntent(context, ACTION_PREV_DAY, appWidgetId));
+            fallback.setOnClickPendingIntent(R.id.btn_next, buildActionIntent(context, ACTION_NEXT_DAY, appWidgetId));
+            PendingIntent openAppPending = buildOpenAppIntent(context, appWidgetId);
             fallback.setOnClickPendingIntent(R.id.tv_date, openAppPending);
+            fallback.setOnClickPendingIntent(R.id.iv_timeline, openAppPending);
             appWidgetManager.updateAppWidget(appWidgetId, fallback);
         }
     }
@@ -127,12 +128,12 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.btn_prev, buildActionIntent(context, ACTION_PREV_DAY, appWidgetId));
         views.setOnClickPendingIntent(R.id.btn_next, buildActionIntent(context, ACTION_NEXT_DAY, appWidgetId));
 
-        Intent openAppIntent = new Intent(context, MainActivity.class);
-        PendingIntent openAppPending = PendingIntent.getActivity(
-                context, appWidgetId, openAppIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+        // Tapping either the date label or the drawn calendar image opens
+        // the app - previously only the small date label was wired, which
+        // made almost the entire widget feel unresponsive to taps.
+        PendingIntent openAppPending = buildOpenAppIntent(context, appWidgetId);
         views.setOnClickPendingIntent(R.id.tv_date, openAppPending);
+        views.setOnClickPendingIntent(R.id.iv_timeline, openAppPending);
 
         ArrayList<TaskInfo> all = readTasksForDate(context, targetDateStr, isRealToday);
         ArrayList<TaskInfo> timed = new ArrayList<>();
@@ -311,13 +312,26 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         return Color.rgb(r, g, b);
     }
 
+    // Each PendingIntent (open-app, prev, next) gets its own clearly
+    // separated request-code range per widget instance, so there is no
+    // possible overlap between them regardless of how many widgets are
+    // placed or how many times they've been paged through.
     private PendingIntent buildActionIntent(Context context, String action, int appWidgetId) {
         Intent intent = new Intent(context, AgendaWidgetProvider.class);
         intent.setAction(action);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        int requestCode = appWidgetId * 10 + (ACTION_PREV_DAY.equals(action) ? 1 : 2);
+        int requestCode = appWidgetId * 100 + (ACTION_PREV_DAY.equals(action) ? 2 : 3);
         return PendingIntent.getBroadcast(
                 context, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    private PendingIntent buildOpenAppIntent(Context context, int appWidgetId) {
+        Intent openAppIntent = new Intent(context, MainActivity.class);
+        int requestCode = appWidgetId * 100 + 1;
+        return PendingIntent.getActivity(
+                context, requestCode, openAppIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
     }
