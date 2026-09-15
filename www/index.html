@@ -469,6 +469,42 @@
   .end-cond-row input[type=date]{ width:150px; }
   .end-cond-row input[type=radio]{ accent-color:var(--accent); width:15px; height:15px; flex:none; }
 
+  /* ---------- task type switch ---------- */
+  .type-switch{ display:flex; gap:4px; border:1px solid var(--line); border-radius:999px; padding:3px; }
+  .type-switch button{
+    flex:1; border:none; background:none; padding:8px 6px; border-radius:999px;
+    font-size:12.5px; font-weight:600; color:var(--ink-soft); white-space:nowrap;
+  }
+  .type-switch button.active{ background:var(--accent); color:var(--accent-ink); }
+
+  /* ---------- progress pie picker ---------- */
+  .progress-picker{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .pie-opt{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    border:1px solid var(--line); background:var(--surface); border-radius:10px;
+    padding:6px 7px 4px; font-family:var(--font-mono); font-size:9.5px; color:var(--ink-soft);
+  }
+  .pie-opt.is-selected{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark); }
+  .pie{
+    width:20px; height:20px; border-radius:50%; flex:none;
+    background:conic-gradient(var(--pie-col, var(--accent)) calc(var(--pct, 0) * 1%), var(--line-soft) 0);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);
+  }
+  .pie.pie-sm{ width:12px; height:12px; }
+  .pie.pie-xs{ width:9px; height:9px; }
+
+  /* ---------- delete button in modal ---------- */
+  .btn-delete{
+    width:100%; margin-top:8px; padding:10px; border-radius:var(--radius-s);
+    border:1px solid var(--line); background:transparent; color:var(--danger);
+    font-size:13px; font-weight:600;
+  }
+  .btn-delete:hover{ border-color:var(--danger); background:#FBF0F0; }
+
+  /* ---------- reminder chip (no time / no duration / no deadline) ---------- */
+  .allday-chip.is-reminder{ background:transparent; border-style:dashed; }
+  .month-chip.is-reminder{ background:transparent; border-style:dashed; }
+
   .checkbox-field{ margin-bottom:10px; }
   .checkbox-row{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; color:var(--ink); cursor:pointer; }
   .checkbox-row input[type=checkbox]{ accent-color:var(--accent); width:17px; height:17px; margin-top:1px; flex:none; }
@@ -700,11 +736,14 @@
         <div class="chip-row" id="category-select"></div>
       </div>
 
-      <div class="field checkbox-field">
-        <label class="checkbox-row">
-          <input type="checkbox" id="f-allday">
-          <span>Toute la journée <span class="field-hint-inline">(ex. formation, congé — peut durer plusieurs jours)</span></span>
-        </label>
+      <div class="field">
+        <label class="field-label">Type</label>
+        <div class="type-switch" id="type-switch">
+          <button type="button" data-type="timed" class="active">🕒 Horaire</button>
+          <button type="button" data-type="allday">📅 Journée</button>
+          <button type="button" data-type="reminder">🚩 Rappel</button>
+        </div>
+        <div class="field-hint" id="type-hint">Tâche à une heure précise, avec une durée.</div>
       </div>
 
       <div class="field-row">
@@ -780,7 +819,23 @@
         </div>
       </div>
 
+      <div class="field" id="progress-field">
+        <label class="field-label">Avancement <span class="field-hint-inline">(optionnel — pour les projets au long cours)</span></label>
+        <div class="progress-picker" id="progress-picker"></div>
+      </div>
+
+      <div class="field" id="extra-dates-field" style="display:none;">
+        <label class="field-label">Ajouter des dates à cette série</label>
+        <div class="custom-dates-row">
+          <input type="date" id="extra-date-input">
+          <button type="button" class="btn-ghost" id="add-extra-date-btn">Ajouter</button>
+        </div>
+        <div class="chip-row" id="extra-dates-list" style="margin-top:8px;"></div>
+        <div class="field-hint">Les dates ajoutées créeront de nouvelles occurrences identiques.</div>
+      </div>
+
       <button type="submit" class="btn-primary" id="submit-btn" style="margin-top:6px;">Ajouter la tâche</button>
+      <button type="button" class="btn-delete" id="modal-delete-btn" style="display:none;">🗑 Supprimer cette tâche</button>
     </form>
   </div>
 </div>
@@ -1362,12 +1417,63 @@
   var recurrenceBlock = document.getElementById('recurrence-block');
   var weekdayField = document.getElementById('weekday-field');
 
+  /* ---------------- task type (timed / all-day / reminder) ---------------- */
+  var selectedType = 'timed';
+  var TYPE_HINTS = {
+    timed: 'Tâche à une heure précise, avec une durée.',
+    allday: 'Occupe la journée entière — peut s\u2019étendre sur plusieurs jours (formation, congé…).',
+    reminder: 'Simple rappel : ni heure, ni durée, ni échéance. S\u2019affiche en haut du jour avec un drapeau.'
+  };
+  /** A task is a reminder when it carries no time AND is explicitly flagged
+      as one - that flag is what separates it from an all-day event, since
+      both are stored without a time. */
+  function taskType(t){
+    if(t.reminder) return 'reminder';
+    return t.time ? 'timed' : 'allday';
+  }
+  function setTaskType(type){
+    selectedType = type;
+    document.querySelectorAll('#type-switch button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+    document.getElementById('type-hint').textContent = TYPE_HINTS[type] || '';
+    document.getElementById('time-field').style.display = (type === 'timed') ? '' : 'none';
+    document.getElementById('duration-field').style.display = (type === 'timed') ? '' : 'none';
+    document.getElementById('enddate-field').style.display = (type === 'allday') ? '' : 'none';
+    // A reminder is by definition deadline-free, so hide that field for it.
+    document.getElementById('f-deadline').closest('.field').style.display = (type === 'reminder') ? 'none' : '';
+  }
+  document.querySelectorAll('#type-switch button').forEach(function(btn){
+    btn.addEventListener('click', function(){ setTaskType(btn.dataset.type); });
+  });
+
+  /* ---------------- progress pie picker ---------------- */
+  var PROGRESS_STEPS = [null, 0, 25, 50, 75, 100];
+  var selectedProgress = null; // null = no progress tracking on this task
+  function buildProgressPicker(){
+    var wrap = document.getElementById('progress-picker');
+    wrap.innerHTML = '';
+    PROGRESS_STEPS.forEach(function(pct){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pie-opt' + (selectedProgress === pct ? ' is-selected' : '');
+      if(pct === null){
+        btn.innerHTML = '<span style="font-size:15px;line-height:20px;">—</span><span>aucun</span>';
+      } else {
+        btn.innerHTML = '<span class="pie" style="--pct:' + pct + '"></span><span>' + pct + '%</span>';
+      }
+      btn.addEventListener('click', function(){ selectedProgress = pct; buildProgressPicker(); });
+      wrap.appendChild(btn);
+    });
+  }
+
   function openModal(mode, prefill){
     editingId = (mode === 'edit' && prefill) ? prefill.id : null;
     form.reset();
     document.getElementById('f-duration').value = 30;
     selectedWeekdays = {};
     customDates = [];
+    extraDates = [];
 
     if(editingId){
       modalTitle.textContent = 'Modifier la tâche';
@@ -1375,16 +1481,20 @@
       document.getElementById('f-title').value = prefill.title;
       document.getElementById('f-date').value = prefill.date;
       document.getElementById('f-time').value = prefill.time || '';
-      document.getElementById('f-duration').value = prefill.duration;
+      document.getElementById('f-duration').value = prefill.duration || 30;
       document.getElementById('f-deadline').value = prefill.deadline || '';
-      document.getElementById('f-allday').checked = !!prefill.allDay;
       document.getElementById('f-enddate').value = prefill.endDate || '';
-      updateAllDayFieldsVisibility();
+      setTaskType(taskType(prefill));
+      selectedProgress = (typeof prefill.progress === 'number') ? prefill.progress : null;
       selectedCategory = prefill.category;
       recurrenceField.style.display = 'none';
+      document.getElementById('modal-delete-btn').style.display = '';
+      // Extra dates can extend an existing series - or turn a one-off task
+      // into a series - straight from whichever occurrence is open.
+      document.getElementById('extra-dates-field').style.display = '';
       if(prefill.recurrenceId){
         var n = tasks.filter(function(t){ return t.recurrenceId === prefill.recurrenceId; }).length;
-        document.getElementById('series-banner-text').textContent = 'Cette tâche appartient à une série de ' + n + ' occurrences (' + (prefill.recurrenceLabel||'récurrente') + '). La modification ne s\u2019applique qu\u2019à cette occurrence.';
+        document.getElementById('series-banner-text').textContent = 'Cette tâche appartient à une série de ' + n + ' occurrences (' + (prefill.recurrenceLabel||'récurrente') + '). Les modifications ne s\u2019appliquent qu\u2019à cette occurrence.';
         seriesBanner.style.display = 'flex';
       } else {
         seriesBanner.style.display = 'none';
@@ -1397,19 +1507,23 @@
       document.getElementById('f-time').value = (prefill && prefill.time) || '';
       document.getElementById('f-duration').value = (prefill && prefill.duration) || 30;
       document.getElementById('f-deadline').value = (prefill && prefill.deadline) || '';
-      document.getElementById('f-allday').checked = !!(prefill && prefill.allDay);
       document.getElementById('f-enddate').value = (prefill && prefill.endDate) || '';
-      updateAllDayFieldsVisibility();
+      setTaskType((prefill && prefill.type) || 'timed');
+      selectedProgress = (prefill && typeof prefill.progress === 'number') ? prefill.progress : null;
       if(prefill && prefill.category) selectedCategory = prefill.category;
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
       document.getElementById('f-recurrence').value = 'none';
       seriesBanner.style.display = 'none';
+      document.getElementById('modal-delete-btn').style.display = 'none';
+      document.getElementById('extra-dates-field').style.display = 'none';
     }
 
     buildCategorySelect();
     buildWeekdaySelect();
     buildCustomDatesList();
+    buildExtraDatesList();
+    buildProgressPicker();
     overlay.classList.add('is-open');
     document.getElementById('f-title').focus();
   }
@@ -1427,20 +1541,48 @@
     btn.addEventListener('click', function(){ document.getElementById('f-duration').value = btn.dataset.min; });
   });
 
-  /* ---------------- "toute la journée" toggle ---------------- */
-  function updateAllDayFieldsVisibility(){
-    var isAllDay = document.getElementById('f-allday').checked;
-    document.getElementById('time-field').style.display = isAllDay ? 'none' : '';
-    document.getElementById('duration-field').style.display = isAllDay ? 'none' : '';
-    document.getElementById('enddate-field').style.display = isAllDay ? '' : 'none';
+  /* ---------------- delete from the edit modal ---------------- */
+  document.getElementById('modal-delete-btn').addEventListener('click', function(){
+    if(!editingId) return;
+    var t = tasks.find(function(x){ return x.id === editingId; });
+    if(!t) return;
+    closeModal();
+    deleteTask(t);
+  });
+
+  /* ---------------- extra dates (extend a series from any occurrence) ---------------- */
+  var extraDates = [];
+  function buildExtraDatesList(){
+    var wrap = document.getElementById('extra-dates-list');
+    wrap.innerHTML = '';
+    extraDates.slice().sort().forEach(function(ds){
+      var chip = document.createElement('span');
+      chip.className = 'date-chip';
+      chip.textContent = fmtShort(parseDateStr(ds)) + ' ';
+      var rm = document.createElement('button');
+      rm.type = 'button'; rm.textContent = '✕';
+      rm.addEventListener('click', function(){
+        extraDates = extraDates.filter(function(x){ return x !== ds; });
+        buildExtraDatesList();
+      });
+      chip.appendChild(rm);
+      wrap.appendChild(chip);
+    });
   }
-  document.getElementById('f-allday').addEventListener('change', updateAllDayFieldsVisibility);
+  document.getElementById('add-extra-date-btn').addEventListener('click', function(){
+    var val = document.getElementById('extra-date-input').value;
+    if(!val) return;
+    if(extraDates.indexOf(val) === -1) extraDates.push(val);
+    document.getElementById('extra-date-input').value = '';
+    buildExtraDatesList();
+  });
 
   /* ---------------- duplicate task ---------------- */
   function duplicateTask(t){
     openModal('create', {
       title: t.title + ' (copie)', category: t.category, date: t.date, time: t.time,
-      duration: t.duration, deadline: t.deadline, allDay: !t.time, endDate: t.endDate
+      duration: t.duration, deadline: t.deadline, type: taskType(t), endDate: t.endDate,
+      progress: t.progress
     });
   }
 
@@ -1542,17 +1684,45 @@
     e.preventDefault();
     var title = document.getElementById('f-title').value.trim();
     var date = document.getElementById('f-date').value;
-    var isAllDay = document.getElementById('f-allday').checked;
-    var time = isAllDay ? '' : document.getElementById('f-time').value;
-    var duration = isAllDay ? 0 : Math.max(5, parseInt(document.getElementById('f-duration').value, 10) || 30);
+    var isTimed = selectedType === 'timed';
+    var isAllDay = selectedType === 'allday';
+    var isReminder = selectedType === 'reminder';
+    var time = isTimed ? document.getElementById('f-time').value : '';
+    var duration = isTimed ? Math.max(5, parseInt(document.getElementById('f-duration').value, 10) || 30) : 0;
     var endDate = isAllDay ? (document.getElementById('f-enddate').value || date) : '';
     if(endDate && endDate < date) endDate = date;
-    var deadline = document.getElementById('f-deadline').value || '';
+    // A reminder is deliberately free of any deadline.
+    var deadline = isReminder ? '' : (document.getElementById('f-deadline').value || '');
+    var progress = (typeof selectedProgress === 'number') ? selectedProgress : undefined;
     if(!title || !date) return;
 
     if(editingId){
       var t = tasks.find(function(x){ return x.id === editingId; });
-      if(t){ t.title = title; t.date = date; t.time = time; t.duration = duration; t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate; }
+      if(t){
+        t.title = title; t.date = date; t.time = time; t.duration = duration;
+        t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate;
+        t.reminder = isReminder ? true : undefined;
+        if(progress === undefined) delete t.progress; else t.progress = progress;
+
+        // Adding dates while editing extends the series. If this task wasn't
+        // part of one yet, it becomes the first member of a new series so the
+        // new occurrences stay linked to it.
+        if(extraDates.length){
+          if(!t.recurrenceId){
+            t.recurrenceId = uid();
+            t.recurrenceLabel = 'Dates personnalisées';
+          }
+          extraDates.forEach(function(d){
+            tasks.push({
+              id: uid(), title:title, category:selectedCategory, date:d, time:time,
+              duration:duration, deadline:deadline, endDate: isAllDay ? d : '',
+              reminder: isReminder ? true : undefined,
+              progress: progress,
+              done:false, recurrenceId:t.recurrenceId, recurrenceLabel:t.recurrenceLabel
+            });
+          });
+        }
+      }
       saveTasks();
       closeModal();
       renderAll();
@@ -1561,7 +1731,7 @@
 
     var recType = document.getElementById('f-recurrence').value;
     if(recType === 'none'){
-      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, done:false });
+      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, reminder: isReminder ? true : undefined, progress: progress, done:false });
     } else {
       var endType = document.querySelector('input[name=rec-end]:checked').value;
       var rec = {
@@ -1576,7 +1746,7 @@
       var recurrenceId = uid();
       var label = recurrenceLabelText(rec);
       dates.forEach(function(d){
-        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
+        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', reminder: isReminder ? true : undefined, progress: progress, done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
       });
     }
     saveTasks();
@@ -1641,7 +1811,9 @@
     card.style.setProperty('--cat', cat.color);
 
     var timeLabel;
-    if(!t.time){
+    if(taskType(t) === 'reminder'){
+      timeLabel = '🚩 Rappel';
+    } else if(!t.time){
       timeLabel = (t.endDate && t.endDate !== t.date) ? ('Toute la journée · jusqu\u2019au ' + fmtShort(parseDateStr(t.endDate))) : 'Toute la journée';
     } else {
       timeLabel = t.time + ' · ' + formatDuration(t.duration);
@@ -1650,6 +1822,9 @@
     if(t.deadline){
       var overdue = !t.done && t.deadline < todayStr();
       metaBits += '<span class="deadline-tag' + (overdue?' overdue':'') + '">🚩 ' + fmtShort(parseDateStr(t.deadline)) + '</span>';
+    }
+    if(typeof t.progress === 'number'){
+      metaBits += '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="pie pie-sm" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' + t.progress + '%</span>';
     }
     if(t.recurrenceId){ metaBits += '<span class="recur-tag">🔁</span>'; }
 
@@ -1762,8 +1937,11 @@
       var ds = toDateStr(d);
       tasksForDate(ds).filter(function(t){ return !t.time; }).forEach(function(t){
         var cat = getCategory(t.category);
-        var spanTag = (t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
-        html += '<span class="allday-chip' + (t.done?' done':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'"><span class="dot"></span>' + escapeHtml(t.title) + spanTag + '</span>';
+        var isReminder = taskType(t) === 'reminder';
+        var spanTag = (!isReminder && t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        var lead = isReminder ? '🚩 ' : '<span class="dot"></span>';
+        html += '<span class="allday-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'">' + lead + escapeHtml(t.title) + spanTag + pieTag + '</span>';
       });
       deadlineMarkersForDate(ds).forEach(function(t){
         var cat = getCategory(t.category);
@@ -1864,8 +2042,10 @@
       var shown = dayTasks.slice(0,2);
       shown.forEach(function(t){
         var cat = getCategory(t.category);
-        var prefix = t.time ? (t.time + ' ') : '';
-        html += '<div class="month-chip' + (t.done?' done':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + '</div>';
+        var isReminder = taskType(t) === 'reminder';
+        var prefix = isReminder ? '🚩 ' : (t.time ? (t.time + ' ') : '');
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
       });
       deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
         var cat = getCategory(t.category);
