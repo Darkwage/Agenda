@@ -147,7 +147,9 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             for (int i = 0; i < allDay.size() && i < 3; i++) {
                 if (i > 0) sb.append("  ·  ");
                 TaskInfo ad = allDay.get(i);
-                sb.append(ad.done ? "\u2713 " : "").append(ad.title);
+                sb.append(ad.done ? "\u2713 " : (ad.reminder ? "\u2691 " : ""))
+                  .append(ad.title);
+                if (ad.manualProgress >= 0) sb.append(" (").append(ad.manualProgress).append("%)");
             }
             views.setTextViewText(R.id.tv_allday, sb.toString());
             views.setViewVisibility(R.id.tv_allday, android.view.View.VISIBLE);
@@ -252,8 +254,28 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             canvas.clipRect(rect);
             float textX = left + 6 * density;
             float textY = top + 12 * density;
+
+            // A manual completion % is drawn as a small pie in the block's
+            // top-right corner, so long-running projects (knitting, crochet...)
+            // show their progress at a glance without opening the app.
+            float titleRight = right - 4 * density;
+            if (t.manualProgress >= 0) {
+                float pieR = 4.5f * density;
+                float pieCx = right - pieR - 4 * density;
+                float pieCy = top + pieR + 4 * density;
+                if (pieCy + pieR < bottom) {
+                    Paint piePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    piePaint.setColor(mixWithWhite(baseColor, 0.70f));
+                    canvas.drawCircle(pieCx, pieCy, pieR, piePaint);
+                    piePaint.setColor(baseColor);
+                    RectF pieBox = new RectF(pieCx - pieR, pieCy - pieR, pieCx + pieR, pieCy + pieR);
+                    canvas.drawArc(pieBox, -90f, 360f * (t.manualProgress / 100f), true, piePaint);
+                    titleRight = pieCx - pieR - 3 * density;
+                }
+            }
+
             String rawTitle = (t.done ? "\u2713 " : "") + t.title;
-            String title = ellipsize(rawTitle, titlePaint, right - textX - 4 * density);
+            String title = ellipsize(rawTitle, titlePaint, Math.max(8 * density, titleRight - textX));
             canvas.drawText(title, textX, textY, titlePaint);
             if (bottom - top > 24 * density) {
                 canvas.drawText(t.time, textX, textY + 11 * density, timePaint);
@@ -353,6 +375,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         int progressPct = -1; // 0-100 while in progress, -1 otherwise
         int col = 0, totalCols = 1;
         boolean done = false;
+        boolean reminder = false;
+        int manualProgress = -1; // user-set completion %, -1 when not tracked
     }
 
     private ArrayList<TaskInfo> readTasksForDate(Context context, String dateStr, boolean isRealToday) {
@@ -376,6 +400,9 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                 info.duration = t.optInt("duration", 0);
                 info.color = t.optString("color", "#2F5D50");
                 info.done = t.optBoolean("done", false);
+                info.reminder = t.optBoolean("reminder", false);
+                info.manualProgress = t.has("progress") && !t.isNull("progress")
+                        ? Math.max(0, Math.min(100, t.optInt("progress", -1))) : -1;
                 if (!info.time.isEmpty()) {
                     try {
                         String[] hm = info.time.split(":");
