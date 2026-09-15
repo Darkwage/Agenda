@@ -28,6 +28,13 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # This action's default is "tools platform-tools", but Google has
+          # removed the legacy standalone "tools" package from the SDK
+          # repository, so the default now fails the job before any build
+          # step runs. platform-tools is all we need here; the Gradle build
+          # pulls the right platform/build-tools versions on its own.
+          packages: 'platform-tools'
 
       - name: Install npm dependencies
         run: npm ci
