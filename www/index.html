@@ -1932,23 +1932,7 @@
       html += '</div>';
     }
 
-    html += '<div class="allday-tray">';
-    days.forEach(function(d){
-      var ds = toDateStr(d);
-      tasksForDate(ds).filter(function(t){ return !t.time; }).forEach(function(t){
-        var cat = getCategory(t.category);
-        var isReminder = taskType(t) === 'reminder';
-        var spanTag = (!isReminder && t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
-        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
-        var lead = isReminder ? '🚩 ' : '<span class="dot"></span>';
-        html += '<span class="allday-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'">' + lead + escapeHtml(t.title) + spanTag + pieTag + '</span>';
-      });
-      deadlineMarkersForDate(ds).forEach(function(t){
-        var cat = getCategory(t.category);
-        html += '<span class="allday-chip is-deadline" style="--cat:'+cat.color+'" data-open="'+t.id+'">🚩 ' + escapeHtml(t.title) + '</span>';
-      });
-    });
-    html += '</div></div>'; // end sticky-head
+     html += '<div class="allday-tray"></div></div>'; // end sticky-head
 
     html += '<div class="time-grid" style="--hr-h:' + hourHeight + 'px">';
     html += '<div class="time-gutter">';
@@ -1967,6 +1951,25 @@
       var totalMinutes = (HOUR_END - HOUR_START) * 60;
       var trackHeight = (HOUR_END - HOUR_START) * hourHeight;
       var inner = '';
+            // --- CORRECTION : Injection des rappels en haut de la colonne du jour ---
+      var remindersInner = '<div class="day-reminders-container" style="padding: 4px; display: flex; flex-direction: column; gap: 4px;">';
+      tasksForDate(ds).filter(function(t) { return !t.time; }).forEach(function(t) {
+        var cat = getCategory(t.category);
+        var isReminder = taskType(t) === 'reminder';
+        var spanTag = (!isReminder && t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        var lead = isReminder ? '🚩 ' : '<span class="dot"></span>';
+        remindersInner += '<span class="allday-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'; display: inline-flex; width: 100%; box-sizing: border-box;" data-open="'+t.id+'">' + lead + escapeHtml(t.title) + spanTag + pieTag + '</span>';
+      });
+      deadlineMarkersForDate(ds).forEach(function(t) {
+        var cat = getCategory(t.category);
+        remindersInner += '<span class="allday-chip is-deadline" style="--cat:'+cat.color+'; display: inline-flex; width: 100%; box-sizing: border-box;" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</span>';
+      });
+      remindersInner += '</div>';
+      
+      var inner = remindersInner; // On initialise le contenu de la colonne avec nos rappels bien positionnés
+      // ------------------------------------------------------------------------
+
       timed.forEach(function(t){
         var top = ((t._start - HOUR_START*60) / totalMinutes) * trackHeight;
         var height = Math.max((t.duration/totalMinutes) * trackHeight, 20);
