@@ -541,22 +541,39 @@
   .color-popover{
     display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:60;
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); box-shadow:var(--shadow-modal);
-    padding:10px; width:186px; grid-template-columns:repeat(6, 1fr); gap:8px;
+    padding:10px; width:224px; grid-template-columns:repeat(6, 1fr); gap:8px;
   }
   .color-popover.is-open{ display:grid; }
   .color-swatch-option{
     width:24px; height:24px; border-radius:50%; border:2px solid transparent; background:var(--sw); padding:0;
   }
   .color-swatch-option.is-selected{ border-color:var(--ink); box-shadow:0 0 0 2px var(--surface) inset; }
-  .color-swatch-custom{
-    grid-column:span 6; display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-soft);
-    border-top:1px solid var(--line-soft); padding-top:8px; margin-top:2px; cursor:pointer;
+
+  /* ---------- sélecteur de couleur personnalisée (intégré) ---------- */
+  .cp-custom-toggle{
+    grid-column:span 6; border:none; border-top:1px solid var(--line-soft); background:none;
+    padding:9px 0 2px; margin-top:2px; font-size:12px; font-weight:600; color:var(--accent-dark); text-align:left;
   }
-  .color-swatch-custom input[type=color]{
-    -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%; border:1px solid var(--line); padding:0;
+  .cp-custom{ grid-column:span 6; display:none; flex-direction:column; gap:12px; padding-top:8px; }
+  .cp-custom.is-open{ display:flex; }
+  .cp-sv{
+    position:relative; height:130px; border-radius:10px; touch-action:none; cursor:crosshair;
+    background-color:hsl(var(--h,0),100%,50%);
+    background-image:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent);
   }
-  .color-swatch-custom input[type=color]::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
-  .color-swatch-custom input[type=color]::-webkit-color-swatch{ border:none; border-radius:50%; }
+  .cp-hue{
+    position:relative; height:16px; border-radius:999px; touch-action:none; cursor:pointer;
+    background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+  }
+  .cp-thumb{
+    position:absolute; width:20px; height:20px; border-radius:50%; border:3px solid #fff;
+    box-shadow:0 0 0 1px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.3);
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  .cp-hue .cp-thumb{ top:50%; }
+  .cp-hex-row{ display:flex; align-items:center; gap:8px; }
+  .cp-preview{ width:34px; height:34px; border-radius:8px; border:1px solid var(--line); flex:none; }
+  .cp-hex-row input{ flex:1; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.04em; }
 
   /* responsive */
   @media (max-width: 1180px){
@@ -991,6 +1008,27 @@
     function toHex(x){ var v = Math.round(x*255); var s2 = v.toString(16); return s2.length < 2 ? '0'+s2 : s2; }
     return '#' + toHex(r) + toHex(g) + toHex(b);
   }
+  /** HEX -> HSV (h: 0-360, s et v: 0-1). Sert au sélecteur de couleur intégré. */
+  function hexToHsv(hex){
+    var c = hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
+    var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min, h=0;
+    if(d){
+      if(max===r) h=((g-b)/d + (g<b?6:0));
+      else if(max===g) h=(b-r)/d+2;
+      else h=(r-g)/d+4;
+      h*=60;
+    }
+    return { h:h, s: max ? d/max : 0, v:max };
+  }
+  /** HSV -> HEX (h: 0-360, s et v: 0-1). */
+  function hsvToHex(h,s,v){
+    var f=function(n){
+      var k=(n+h/60)%6;
+      var x=v-v*s*Math.max(0,Math.min(k,4-k,1));
+      var s2=Math.round(x*255).toString(16); return s2.length<2?'0'+s2:s2;
+    };
+    return '#'+f(5)+f(3)+f(1);
+  }
   /** Recomputes evenly-spaced lightness shades (same hue/saturation as the
       group's base color) for every category currently assigned to it, so
       they read as a clear family of colors rather than unrelated hues. */
@@ -1088,17 +1126,71 @@
       pop.appendChild(sw);
     });
 
-    var customRow = document.createElement('label');
-    customRow.className = 'color-swatch-custom';
-    var customInput = document.createElement('input');
-    customInput.type = 'color'; customInput.value = initialColor || '#6B6F76';
-    customInput.addEventListener('input', function(){
-      btn.style.setProperty('--sw', customInput.value);
-      onChange(customInput.value);
+    /* ---- sélecteur personnalisé intégré (carré S/V + teinte + hex) ---- */
+    var toggle = document.createElement('button');
+    toggle.type = 'button'; toggle.className = 'cp-custom-toggle'; toggle.textContent = '🎨 Autre couleur…';
+    var panel = document.createElement('div');
+    panel.className = 'cp-custom';
+    panel.innerHTML =
+      '<div class="cp-sv"><div class="cp-thumb"></div></div>' +
+      '<div class="cp-hue"><div class="cp-thumb"></div></div>' +
+      '<div class="cp-hex-row"><span class="cp-preview"></span>' +
+      '<input type="text" maxlength="7" spellcheck="false" autocapitalize="off" autocomplete="off"></div>';
+    pop.appendChild(toggle);
+    pop.appendChild(panel);
+
+    var sv = panel.querySelector('.cp-sv'), svThumb = sv.firstChild;
+    var hue = panel.querySelector('.cp-hue'), hueThumb = hue.firstChild;
+    var preview = panel.querySelector('.cp-preview'), hexInput = panel.querySelector('input');
+    var hsv = hexToHsv(initialColor || '#6B6F76');
+
+    function paint(){
+      var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+      sv.style.setProperty('--h', hsv.h);
+      svThumb.style.left = (hsv.s*100) + '%';
+      svThumb.style.top = ((1-hsv.v)*100) + '%';
+      svThumb.style.background = hex;
+      hueThumb.style.left = (hsv.h/360*100) + '%';
+      hueThumb.style.background = 'hsl(' + hsv.h + ',100%,50%)';
+      preview.style.background = hex;
+      btn.style.setProperty('--sw', hex);
+      if(document.activeElement !== hexInput) hexInput.value = hex.toUpperCase();
+      return hex;
+    }
+    function clamp01(x){ return Math.min(1, Math.max(0, x)); }
+    // La couleur n'est appliquée (sauvegarde + rendu) qu'au relâchement du doigt.
+    function makeDraggable(el, apply){
+      var active = false;
+      function move(e){
+        var r = el.getBoundingClientRect();
+        apply(clamp01((e.clientX - r.left)/r.width), clamp01((e.clientY - r.top)/r.height));
+        paint();
+      }
+      el.addEventListener('pointerdown', function(e){
+        active = true;
+        try{ el.setPointerCapture(e.pointerId); }catch(err){}
+        e.preventDefault(); move(e);
+      });
+      el.addEventListener('pointermove', function(e){ if(active) move(e); });
+      function end(){ if(!active) return; active = false; onChange(paint()); }
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+    }
+    makeDraggable(sv, function(x, y){ hsv.s = x; hsv.v = 1 - y; });
+    makeDraggable(hue, function(x){ hsv.h = x * 360; });
+
+    hexInput.addEventListener('input', function(){
+      var v = hexInput.value.trim();
+      if(v.charAt(0) !== '#') v = '#' + v;
+      if(/^#[0-9a-fA-F]{6}$/.test(v)){ hsv = hexToHsv(v); paint(); }
     });
-    customRow.appendChild(customInput);
-    customRow.appendChild(document.createTextNode('Autre couleur…'));
-    pop.appendChild(customRow);
+    hexInput.addEventListener('change', function(){ onChange(paint()); });
+
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      panel.classList.toggle('is-open');
+      if(panel.classList.contains('is-open')) paint();
+    });
 
     btn.addEventListener('click', function(e){
       e.stopPropagation();
@@ -1109,7 +1201,7 @@
 
     wrap.appendChild(btn);
     wrap.appendChild(pop);
-    wrap.setColor = function(hex){ btn.style.setProperty('--sw', hex); };
+    wrap.setColor = function(hex){ hsv = hexToHsv(hex); btn.style.setProperty('--sw', hex); hexInput.value = hex.toUpperCase(); };
     return wrap;
   }
 
@@ -2035,281 +2127,4 @@
       var muted = d.getMonth() !== month;
       var isToday = sameDay(d, today);
       var dayTasks = tasksForDate(ds).sort(function(a,b){
-        var am = a.time ? timeToMinutes(a.time) : -1, bm = b.time ? timeToMinutes(b.time) : -1;
-        return am - bm;
-      });
-      var deadlineTasks = deadlineMarkersForDate(ds);
-
-      html += '<div class="month-cell' + (muted?' muted':'') + '" data-date="' + ds + '">';
-      html += '<span class="month-daynum' + (isToday?' is-today':'') + '" data-goto="' + ds + '">' + d.getDate() + '</span>';
-      var shown = dayTasks.slice(0,2);
-      shown.forEach(function(t){
-        var cat = getCategory(t.category);
-        var isReminder = taskType(t) === 'reminder';
-        var prefix = isReminder ? '🚩 ' : (t.time ? (t.time + ' ') : '');
-        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
-        html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
-      });
-      deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
-        var cat = getCategory(t.category);
-        html += '<div class="month-chip is-deadline" style="--cat:' + cat.color + '" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</div>';
-      });
-      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0,2-shown.length));
-      if(extra > 0){ html += '<div class="month-more">+' + extra + ' de plus</div>'; }
-      html += '</div>';
-    }
-    html += '</div>';
-    calendarBody.innerHTML = html;
-
-    calendarBody.querySelectorAll('.month-daynum').forEach(function(el){
-      el.addEventListener('click', function(ev){
-        ev.stopPropagation();
-        currentDate = parseDateStr(el.dataset.goto);
-        calendarView = 'day';
-        setActiveViewButton();
-        renderCalendar();
-      });
-    });
-    calendarBody.querySelectorAll('.month-cell').forEach(function(cell){
-      cell.addEventListener('click', function(e){
-        if(e.target.closest('[data-open]') || e.target.closest('.month-daynum')) return;
-        openModal('create', { date: cell.dataset.date });
-      });
-    });
-    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
-  }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
-  }
-
-  /** Wires a [data-open] element (task block, month chip, all-day chip) so
-      a single click opens it for editing, while a double-click instead
-      toggles it done/not-done right there in the calendar - no need to
-      open the task first. A short timer tells the two apart: a click
-      waits briefly before opening the modal, and is cancelled if a second
-      click (dblclick) arrives in that window. */
-  function wireOpenElement(el){
-    var pendingClick = null;
-    el.addEventListener('click', function(ev){
-      ev.stopPropagation();
-      if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
-      pendingClick = setTimeout(function(){
-        pendingClick = null;
-        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-        if(t) openModal('edit', t);
-      }, 260);
-    });
-    el.addEventListener('dblclick', function(ev){
-      ev.stopPropagation();
-      if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
-      var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-      if(t){ t.done = !t.done; saveTasks(); renderAll(); }
-    });
-  }
-
-  /* ---------------- toolbar controls ---------------- */
-  document.getElementById('prev-btn').addEventListener('click', function(){ step(-1); });
-  document.getElementById('next-btn').addEventListener('click', function(){ step(1); });
-  document.getElementById('today-btn').addEventListener('click', function(){ currentDate = new Date(); currentDate.setHours(0,0,0,0); renderCalendar(); });
-  function step(dir){
-    if(calendarView === 'day') currentDate = addDays(currentDate, dir);
-    else if(calendarView === 'week') currentDate = addDays(currentDate, dir*7);
-    else currentDate = addMonths(currentDate, dir);
-    renderCalendar();
-  }
-  function setActiveViewButton(){
-    document.querySelectorAll('#view-switch button').forEach(function(b){ b.classList.toggle('active', b.dataset.view === calendarView); });
-  }
-  document.querySelectorAll('#view-switch button').forEach(function(btn){
-    btn.addEventListener('click', function(){ calendarView = btn.dataset.view; setActiveViewButton(); renderCalendar(); });
-  });
-
-  document.getElementById('show-completed').addEventListener('change', function(e){ filters.showCompleted = e.target.checked; renderAll(); });
-
-  /* ---------------- notifications (sound + vibration) toggle ---------------- */
-  var NOTIF_KEY = 'agenda_notif_enabled';
-  var TASK_CHANGE_CHANNEL = 'agenda-task-changes';
-  var notifCheckbox = document.getElementById('notif-enabled');
-  notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
-
-  function nativeLocalNotifications(){
-    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
-  }
-
-  // A dedicated channel with a short custom beep + vibration, so the alert
-  // reads as a discreet "task change" cue rather than a generic, possibly
-  // loud system notification sound. Channel settings are fixed by Android
-  // after first creation, so this only needs to run once.
-  function ensureTaskChangeChannel(nativeLN){
-    try{
-      nativeLN.createChannel({
-        id: TASK_CHANGE_CHANNEL,
-        name: 'Changement de tâche',
-        description: 'Bip discret et vibration au démarrage d\u2019une tâche.',
-        sound: 'beep.wav',
-        vibration: true,
-        importance: 3
-      });
-    }catch(e){}
-  }
-
-  notifCheckbox.addEventListener('change', function(e){
-    if(!e.target.checked){ localStorage.setItem(NOTIF_KEY, '0'); return; }
-
-    var nativeLN = nativeLocalNotifications();
-    if(nativeLN){
-      // Real Android app: use a dedicated channel (short beep + vibration)
-      // rather than the device's generic, possibly loud default sound.
-      nativeLN.requestPermissions().then(function(res){
-        if(res && res.display === 'granted'){
-          ensureTaskChangeChannel(nativeLN);
-          localStorage.setItem(NOTIF_KEY, '1');
-        } else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
-      });
-    } else if('Notification' in window){
-      // Plain browser fallback (only relevant if this page is opened
-      // directly in a web browser rather than the packaged app).
-      Notification.requestPermission().then(function(perm){
-        if(perm === 'granted'){ localStorage.setItem(NOTIF_KEY, '1'); }
-        else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
-      });
-    } else {
-      alert('Les notifications ne sont pas prises en charge ici.');
-      e.target.checked = false;
-    }
-  });
-
-  function notificationsEnabled(){
-    if(localStorage.getItem(NOTIF_KEY) !== '1') return false;
-    return !!nativeLocalNotifications() || (('Notification' in window) && Notification.permission === 'granted');
-  }
-
-  function fireTaskStartNotification(t){
-    var cat = getCategory(t.category);
-    var body = cat.label + ' · commence maintenant (' + formatDuration(t.duration) + ')';
-    var nativeLN = nativeLocalNotifications();
-    if(nativeLN){
-      nativeLN.schedule({ notifications: [{
-        id: Math.floor(Math.random() * 2147483647),
-        title: '▶ ' + t.title,
-        body: body,
-        channelId: TASK_CHANGE_CHANNEL,
-        schedule: { at: new Date(Date.now() + 300) }
-      }] }).catch(function(){});
-    } else if('Notification' in window && Notification.permission === 'granted'){
-      try{ new Notification('▶ ' + t.title, { body: body, tag: t.id }); }catch(e){}
-    }
-  }
-
-  /* ---------------- live clock: refreshes the now-line, progress bars, and fires start-of-task alerts ---------------- */
-  var notifiedThisSession = {};
-  function liveTick(){
-    if(notificationsEnabled()){
-      var nm = nowMinutes(), ds = todayStr();
-      tasks.forEach(function(t){
-        if(!t.time || t.date !== ds || t.done) return;
-        var s = timeToMinutes(t.time);
-        if(nm === s && !notifiedThisSession[t.id]){
-          notifiedThisSession[t.id] = true;
-          fireTaskStartNotification(t);
-        }
-      });
-    }
-    renderAll();
-  }
-  setInterval(liveTick, 60000);
-
-  var filtersToggle = document.getElementById('filters-toggle');
-  var filtersPopover = document.getElementById('filters-popover');
-  filtersToggle.addEventListener('click', function(e){
-    e.stopPropagation();
-    var open = filtersPopover.classList.toggle('is-open');
-    filtersToggle.classList.toggle('is-open', open);
-  });
-  document.addEventListener('click', function(e){
-    if(!filtersPopover.contains(e.target) && e.target !== filtersToggle){
-      filtersPopover.classList.remove('is-open');
-      filtersToggle.classList.remove('is-open');
-    }
-  });
-
-  /* ---------------- mobile panel switch ---------------- */
-  function showPanel(name){
-    document.getElementById('panel-calendar').classList.toggle('hide-mobile', name !== 'calendar');
-    document.getElementById('panel-list').classList.toggle('hide-mobile', name !== 'list');
-    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left');
-    document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel === name); });
-  }
-  document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
-    btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
-  });
-
-  /* ---------------- widget diagnostics ---------------- */
-  document.getElementById('diag-run-btn').addEventListener('click', function(){
-    var out = document.getElementById('diag-output');
-    var lines = [];
-    var hasCapacitor = !!(window.Capacitor);
-    lines.push(hasCapacitor
-      ? '<span class="ok">✔ Pont Capacitor détecté</span>'
-      : '<span class="fail">✘ Pont Capacitor absent</span>');
-
-    var isNative = hasCapacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-    lines.push('Plateforme : ' + (hasCapacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'inconnue') + (isNative ? ' (native)' : ' (web)'));
-
-    var hasPrefs = !!(hasCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences);
-    lines.push(hasPrefs
-      ? '<span class="ok">✔ Greffon Préférences disponible</span>'
-      : '<span class="fail">✘ Greffon Préférences introuvable</span>');
-
-    out.innerHTML = lines.join('<br>') + '<br>⏳ Test d\u2019écriture/lecture…';
-
-    if(!hasPrefs){
-      out.innerHTML += '<br><span class="fail">Impossible de tester : greffon absent.</span>';
-      return;
-    }
-
-    syncTasksToWidget();
-    window.Capacitor.Plugins.Preferences.get({ key:'agenda_widget_tasks' }).then(function(res){
-      var count = 0;
-      try{ count = JSON.parse(res.value || '[]').length; }catch(e){}
-      out.innerHTML = lines.join('<br>') + '<br><span class="ok">✔ Écriture/lecture réussie</span> — ' + count + ' tâche(s) transmise(s) au widget.';
-    }).catch(function(err){
-      out.innerHTML = lines.join('<br>') + '<br><span class="fail">✘ Erreur : ' + String(err) + '</span>';
-    });
-  });
-
-  /* ---------------- init ---------------- */
-  function renderAll(){ renderList(); renderCalendar(); }
-
-  function applyStartupParams(){
-    try{
-      var params = new URLSearchParams(window.location.search);
-      var view = params.get('view');
-      var isMobile = window.innerWidth <= 980;
-      if(view === 'day' || view === 'week' || view === 'month'){
-        calendarView = view;
-        currentDate = new Date(); currentDate.setHours(0,0,0,0);
-        if(isMobile) showPanel('calendar');
-      } else if(view === 'list'){
-        if(isMobile) showPanel('list');
-      } else if(isMobile){
-        showPanel('calendar');
-      }
-      setActiveViewButton();
-    }catch(e){ if (window.innerWidth <= 980) showPanel('calendar'); }
-  }
-
-  buildCategorySelect();
-  buildCategoryFilters();
-  buildWeekdaySelect();
-  renderCategoryManager();
-  renderGroupManager();
-  applyStartupParams();
-  renderAll();
-  syncTasksToWidget();
-
-})();
-</script>
-</body>
-</html>
+        var am = a.time ? timeToMinutes(a.time) : -1, bm = b.time ? timeToMinutes(b.time)
