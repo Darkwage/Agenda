@@ -627,6 +627,7 @@
     <div class="brand">
       <div class="brand-mark">Ag<span>e</span>nda</div>
       <div class="brand-tag">Vos tâches, à l'heure près</div>
+      <div class="brand-tag" id="build-stamp" style="color:#B23A3A;">build 30/09-C · JS ✘ (non démarré)</div>
     </div>
   </header>
 
@@ -865,6 +866,7 @@
 <script src="capacitor-plugins/capacitor-local-notifications.js"></script>
 <script>
 /* Bandeau de diagnostic : affiche à l'écran toute erreur JavaScript. */
+(function(){ var st = document.getElementById('build-stamp'); if(st){ st.textContent = 'build 30/09-C · JS ✔ (script 1)'; st.style.color = '#3D6B4F'; } })();
 window.__showJsError = function(msg){
   try{
     var b = document.getElementById('js-error-banner');
@@ -2125,4 +2127,325 @@ window.addEventListener('error', function(ev){
     });
 
     html += '</div></div></div></div>';
-   
+    calendarBody.innerHTML = html;
+
+    calendarBody.querySelectorAll('.day-track').forEach(function(track){
+      track.addEventListener('click', function(e){
+        if(e.target.closest('.task-block')) return;
+        var rect = track.getBoundingClientRect();
+        var y = e.clientY - rect.top;
+        var pctY = Math.max(0, y / rect.height);
+        var totalMin = (HOUR_END - HOUR_START) * 60;
+        var minutesFromStart = Math.round((pctY * totalMin) / 15) * 15;
+        var hour = HOUR_START + Math.floor(minutesFromStart/60);
+        var minute = minutesFromStart % 60;
+        openModal('create', { date: track.dataset.date, time: pad(hour) + ':' + pad(minute) });
+      });
+    });
+    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+
+    if(prevScroll){
+      var newGridScroll = calendarBody.querySelector('.grid-scroll');
+      if(newGridScroll){ newGridScroll.scrollTop = prevScroll.top; newGridScroll.scrollLeft = prevScroll.left; }
+    }
+  }
+
+  function renderMonth(ref){
+    var year = ref.getFullYear(), month = ref.getMonth();
+    var firstOfMonth = new Date(year, month, 1);
+    var gridStart = getWeekStart(firstOfMonth);
+    var today = new Date();
+    var weekdayNames = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+    var html = '<div class="month-grid">';
+    weekdayNames.forEach(function(w){ html += '<div class="month-weekday">' + w + '</div>'; });
+
+    for(var i=0;i<42;i++){
+      var d = addDays(gridStart, i);
+      var ds = toDateStr(d);
+      var muted = d.getMonth() !== month;
+      var isToday = sameDay(d, today);
+      var dayTasks = tasksForDate(ds).sort(function(a,b){
+        var am = a.time ? timeToMinutes(a.time) : -1, bm = b.time ? timeToMinutes(b.time) : -1;
+        return am - bm;
+      });
+      var deadlineTasks = deadlineMarkersForDate(ds);
+
+      html += '<div class="month-cell' + (muted?' muted':'') + '" data-date="' + ds + '">';
+      html += '<span class="month-daynum' + (isToday?' is-today':'') + '" data-goto="' + ds + '">' + d.getDate() + '</span>';
+      var shown = dayTasks.slice(0,2);
+      shown.forEach(function(t){
+        var cat = getCategory(t.category);
+        var isReminder = taskType(t) === 'reminder';
+        var prefix = isReminder ? '🚩 ' : (t.time ? (t.time + ' ') : '');
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
+      });
+      deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
+        var cat = getCategory(t.category);
+        html += '<div class="month-chip is-deadline" style="--cat:' + cat.color + '" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</div>';
+      });
+      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0,2-shown.length));
+      if(extra > 0){ html += '<div class="month-more">+' + extra + ' de plus</div>'; }
+      html += '</div>';
+    }
+    html += '</div>';
+    calendarBody.innerHTML = html;
+
+    calendarBody.querySelectorAll('.month-daynum').forEach(function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        currentDate = parseDateStr(el.dataset.goto);
+        calendarView = 'day';
+        setActiveViewButton();
+        renderCalendar();
+      });
+    });
+    calendarBody.querySelectorAll('.month-cell').forEach(function(cell){
+      cell.addEventListener('click', function(e){
+        if(e.target.closest('[data-open]') || e.target.closest('.month-daynum')) return;
+        openModal('create', { date: cell.dataset.date });
+      });
+    });
+    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+  }
+
+  /** Wires a [data-open] element (task block, month chip, all-day chip) so
+      a single click opens it for editing, while a double-click instead
+      toggles it done/not-done right there in the calendar - no need to
+      open the task first. A short timer tells the two apart: a click
+      waits briefly before opening the modal, and is cancelled if a second
+      click (dblclick) arrives in that window. */
+  function wireOpenElement(el){
+    var pendingClick = null;
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
+      pendingClick = setTimeout(function(){
+        pendingClick = null;
+        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+        if(t) openModal('edit', t);
+      }, 260);
+    });
+    el.addEventListener('dblclick', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
+      var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+      if(t){ t.done = !t.done; saveTasks(); renderAll(); }
+    });
+  }
+
+  /* ---------------- toolbar controls ---------------- */
+  document.getElementById('prev-btn').addEventListener('click', function(){ step(-1); });
+  document.getElementById('next-btn').addEventListener('click', function(){ step(1); });
+  document.getElementById('today-btn').addEventListener('click', function(){ currentDate = new Date(); currentDate.setHours(0,0,0,0); renderCalendar(); });
+  function step(dir){
+    if(calendarView === 'day') currentDate = addDays(currentDate, dir);
+    else if(calendarView === 'week') currentDate = addDays(currentDate, dir*7);
+    else currentDate = addMonths(currentDate, dir);
+    renderCalendar();
+  }
+  function setActiveViewButton(){
+    document.querySelectorAll('#view-switch button').forEach(function(b){ b.classList.toggle('active', b.dataset.view === calendarView); });
+  }
+  document.querySelectorAll('#view-switch button').forEach(function(btn){
+    btn.addEventListener('click', function(){ calendarView = btn.dataset.view; setActiveViewButton(); renderCalendar(); });
+  });
+
+  document.getElementById('show-completed').addEventListener('change', function(e){ filters.showCompleted = e.target.checked; renderAll(); });
+
+  /* ---------------- notifications (sound + vibration) toggle ---------------- */
+  var NOTIF_KEY = 'agenda_notif_enabled';
+  var TASK_CHANGE_CHANNEL = 'agenda-task-changes';
+  var notifCheckbox = document.getElementById('notif-enabled');
+  notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
+
+  function nativeLocalNotifications(){
+    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
+  }
+
+  // A dedicated channel with a short custom beep + vibration, so the alert
+  // reads as a discreet "task change" cue rather than a generic, possibly
+  // loud system notification sound. Channel settings are fixed by Android
+  // after first creation, so this only needs to run once.
+  function ensureTaskChangeChannel(nativeLN){
+    try{
+      nativeLN.createChannel({
+        id: TASK_CHANGE_CHANNEL,
+        name: 'Changement de tâche',
+        description: 'Bip discret et vibration au démarrage d\u2019une tâche.',
+        sound: 'beep.wav',
+        vibration: true,
+        importance: 3
+      });
+    }catch(e){}
+  }
+
+  notifCheckbox.addEventListener('change', function(e){
+    if(!e.target.checked){ localStorage.setItem(NOTIF_KEY, '0'); return; }
+
+    var nativeLN = nativeLocalNotifications();
+    if(nativeLN){
+      // Real Android app: use a dedicated channel (short beep + vibration)
+      // rather than the device's generic, possibly loud default sound.
+      nativeLN.requestPermissions().then(function(res){
+        if(res && res.display === 'granted'){
+          ensureTaskChangeChannel(nativeLN);
+          localStorage.setItem(NOTIF_KEY, '1');
+        } else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
+      });
+    } else if('Notification' in window){
+      // Plain browser fallback (only relevant if this page is opened
+      // directly in a web browser rather than the packaged app).
+      Notification.requestPermission().then(function(perm){
+        if(perm === 'granted'){ localStorage.setItem(NOTIF_KEY, '1'); }
+        else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
+      });
+    } else {
+      alert('Les notifications ne sont pas prises en charge ici.');
+      e.target.checked = false;
+    }
+  });
+
+  function notificationsEnabled(){
+    if(localStorage.getItem(NOTIF_KEY) !== '1') return false;
+    return !!nativeLocalNotifications() || (('Notification' in window) && Notification.permission === 'granted');
+  }
+
+  function fireTaskStartNotification(t){
+    var cat = getCategory(t.category);
+    var body = cat.label + ' · commence maintenant (' + formatDuration(t.duration) + ')';
+    var nativeLN = nativeLocalNotifications();
+    if(nativeLN){
+      nativeLN.schedule({ notifications: [{
+        id: Math.floor(Math.random() * 2147483647),
+        title: '▶ ' + t.title,
+        body: body,
+        channelId: TASK_CHANGE_CHANNEL,
+        schedule: { at: new Date(Date.now() + 300) }
+      }] }).catch(function(){});
+    } else if('Notification' in window && Notification.permission === 'granted'){
+      try{ new Notification('▶ ' + t.title, { body: body, tag: t.id }); }catch(e){}
+    }
+  }
+
+  /* ---------------- live clock: refreshes the now-line, progress bars, and fires start-of-task alerts ---------------- */
+  var notifiedThisSession = {};
+  function liveTick(){
+    if(notificationsEnabled()){
+      var nm = nowMinutes(), ds = todayStr();
+      tasks.forEach(function(t){
+        if(!t.time || t.date !== ds || t.done) return;
+        var s = timeToMinutes(t.time);
+        if(nm === s && !notifiedThisSession[t.id]){
+          notifiedThisSession[t.id] = true;
+          fireTaskStartNotification(t);
+        }
+      });
+    }
+    renderAll();
+  }
+  setInterval(liveTick, 60000);
+
+  var filtersToggle = document.getElementById('filters-toggle');
+  var filtersPopover = document.getElementById('filters-popover');
+  filtersToggle.addEventListener('click', function(e){
+    e.stopPropagation();
+    var open = filtersPopover.classList.toggle('is-open');
+    filtersToggle.classList.toggle('is-open', open);
+  });
+  document.addEventListener('click', function(e){
+    if(!filtersPopover.contains(e.target) && e.target !== filtersToggle){
+      filtersPopover.classList.remove('is-open');
+      filtersToggle.classList.remove('is-open');
+    }
+  });
+
+  /* ---------------- mobile panel switch ---------------- */
+  function showPanel(name){
+    document.getElementById('panel-calendar').classList.toggle('hide-mobile', name !== 'calendar');
+    document.getElementById('panel-list').classList.toggle('hide-mobile', name !== 'list');
+    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left');
+    document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel === name); });
+  }
+  document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
+    btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
+  });
+
+  /* ---------------- widget diagnostics ---------------- */
+  document.getElementById('diag-run-btn').addEventListener('click', function(){
+    var out = document.getElementById('diag-output');
+    var lines = [];
+    var hasCapacitor = !!(window.Capacitor);
+    lines.push(hasCapacitor
+      ? '<span class="ok">✔ Pont Capacitor détecté</span>'
+      : '<span class="fail">✘ Pont Capacitor absent</span>');
+
+    var isNative = hasCapacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+    lines.push('Plateforme : ' + (hasCapacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'inconnue') + (isNative ? ' (native)' : ' (web)'));
+
+    var hasPrefs = !!(hasCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences);
+    lines.push(hasPrefs
+      ? '<span class="ok">✔ Greffon Préférences disponible</span>'
+      : '<span class="fail">✘ Greffon Préférences introuvable</span>');
+
+    out.innerHTML = lines.join('<br>') + '<br>⏳ Test d\u2019écriture/lecture…';
+
+    if(!hasPrefs){
+      out.innerHTML += '<br><span class="fail">Impossible de tester : greffon absent.</span>';
+      return;
+    }
+
+    syncTasksToWidget();
+    window.Capacitor.Plugins.Preferences.get({ key:'agenda_widget_tasks' }).then(function(res){
+      var count = 0;
+      try{ count = JSON.parse(res.value || '[]').length; }catch(e){}
+      out.innerHTML = lines.join('<br>') + '<br><span class="ok">✔ Écriture/lecture réussie</span> — ' + count + ' tâche(s) transmise(s) au widget.';
+    }).catch(function(err){
+      out.innerHTML = lines.join('<br>') + '<br><span class="fail">✘ Erreur : ' + String(err) + '</span>';
+    });
+  });
+
+  /* ---------------- init ---------------- */
+  function renderAll(){ renderList(); renderCalendar(); }
+
+  function applyStartupParams(){
+    try{
+      var params = new URLSearchParams(window.location.search);
+      var view = params.get('view');
+      var isMobile = window.innerWidth <= 980;
+      if(view === 'day' || view === 'week' || view === 'month'){
+        calendarView = view;
+        currentDate = new Date(); currentDate.setHours(0,0,0,0);
+        if(isMobile) showPanel('calendar');
+      } else if(view === 'list'){
+        if(isMobile) showPanel('list');
+      } else if(isMobile){
+        showPanel('calendar');
+      }
+      setActiveViewButton();
+    }catch(e){ if (window.innerWidth <= 980) showPanel('calendar'); }
+  }
+
+  (function(){ var st = document.getElementById('build-stamp'); if(st){ st.textContent = 'build 30/09-C · JS ✔ (script 2 démarré)'; } })();
+  function safeInit(name, fn){
+    try{ fn(); }catch(err){ if(window.__showJsError) window.__showJsError(name + ' : ' + (err && err.message ? err.message : err)); }
+  }
+  safeInit('catégories (sélecteur)', buildCategorySelect);
+  safeInit('catégories (filtres)', buildCategoryFilters);
+  safeInit('jours', buildWeekdaySelect);
+  safeInit('catégories (réglages)', renderCategoryManager);
+  safeInit('groupes (réglages)', renderGroupManager);
+  safeInit('onglets', applyStartupParams);
+  safeInit('affichage', renderAll);
+  safeInit('widget', syncTasksToWidget);
+  (function(){ var st = document.getElementById('build-stamp'); if(st){ st.textContent = 'build 30/09-C · démarrage terminé ✔'; } })();
+
+})();
+</script>
+</body>
+</html>
