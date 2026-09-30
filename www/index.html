@@ -541,39 +541,22 @@
   .color-popover{
     display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:60;
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); box-shadow:var(--shadow-modal);
-    padding:10px; width:224px; grid-template-columns:repeat(6, 1fr); gap:8px;
+    padding:10px; width:186px; grid-template-columns:repeat(6, 1fr); gap:8px;
   }
   .color-popover.is-open{ display:grid; }
   .color-swatch-option{
     width:24px; height:24px; border-radius:50%; border:2px solid transparent; background:var(--sw); padding:0;
   }
   .color-swatch-option.is-selected{ border-color:var(--ink); box-shadow:0 0 0 2px var(--surface) inset; }
-
-  /* ---------- sélecteur de couleur personnalisée (intégré) ---------- */
-  .cp-custom-toggle{
-    grid-column:span 6; border:none; border-top:1px solid var(--line-soft); background:none;
-    padding:9px 0 2px; margin-top:2px; font-size:12px; font-weight:600; color:var(--accent-dark); text-align:left;
+  .color-swatch-custom{
+    grid-column:span 6; display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-soft);
+    border-top:1px solid var(--line-soft); padding-top:8px; margin-top:2px; cursor:pointer;
   }
-  .cp-custom{ grid-column:span 6; display:none; flex-direction:column; gap:12px; padding-top:8px; }
-  .cp-custom.is-open{ display:flex; }
-  .cp-sv{
-    position:relative; height:130px; border-radius:10px; touch-action:none; cursor:crosshair;
-    background-color:hsl(var(--h,0),100%,50%);
-    background-image:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent);
+  .color-swatch-custom input[type=color]{
+    -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%; border:1px solid var(--line); padding:0;
   }
-  .cp-hue{
-    position:relative; height:16px; border-radius:999px; touch-action:none; cursor:pointer;
-    background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
-  }
-  .cp-thumb{
-    position:absolute; width:20px; height:20px; border-radius:50%; border:3px solid #fff;
-    box-shadow:0 0 0 1px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.3);
-    transform:translate(-50%,-50%); pointer-events:none;
-  }
-  .cp-hue .cp-thumb{ top:50%; }
-  .cp-hex-row{ display:flex; align-items:center; gap:8px; }
-  .cp-preview{ width:34px; height:34px; border-radius:8px; border:1px solid var(--line); flex:none; }
-  .cp-hex-row input{ flex:1; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.04em; }
+  .color-swatch-custom input[type=color]::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
+  .color-swatch-custom input[type=color]::-webkit-color-swatch{ border:none; border-radius:50%; }
 
   /* responsive */
   @media (max-width: 1180px){
@@ -864,21 +847,6 @@
 <script src="capacitor-plugins/capacitor-preferences.js"></script>
 <script src="capacitor-plugins/capacitor-local-notifications.js"></script>
 <script>
-/* Bandeau de diagnostic : affiche à l'écran toute erreur JavaScript. */
-window.addEventListener('error', function(ev){
-  try{
-    var b = document.getElementById('js-error-banner');
-    if(!b){
-      b = document.createElement('div');
-      b.id = 'js-error-banner';
-      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#B23A3A;color:#fff;font:12px/1.4 monospace;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;white-space:pre-wrap;word-break:break-word;';
-      document.body.appendChild(b);
-    }
-    b.textContent += 'Erreur : ' + (ev.message || 'inconnue') + (ev.lineno ? ' (ligne ' + ev.lineno + ')' : '') + '\n';
-  }catch(e){}
-});
-</script>
-<script>
 (function(){
   "use strict";
 
@@ -1023,27 +991,6 @@ window.addEventListener('error', function(ev){
     function toHex(x){ var v = Math.round(x*255); var s2 = v.toString(16); return s2.length < 2 ? '0'+s2 : s2; }
     return '#' + toHex(r) + toHex(g) + toHex(b);
   }
-  /** HEX -> HSV (h: 0-360, s et v: 0-1). Sert au sélecteur de couleur intégré. */
-  function hexToHsv(hex){
-    var c = hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
-    var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min, h=0;
-    if(d){
-      if(max===r) h=((g-b)/d + (g<b?6:0));
-      else if(max===g) h=(b-r)/d+2;
-      else h=(r-g)/d+4;
-      h*=60;
-    }
-    return { h:h, s: max ? d/max : 0, v:max };
-  }
-  /** HSV -> HEX (h: 0-360, s et v: 0-1). */
-  function hsvToHex(h,s,v){
-    var f=function(n){
-      var k=(n+h/60)%6;
-      var x=v-v*s*Math.max(0,Math.min(k,4-k,1));
-      var s2=Math.round(x*255).toString(16); return s2.length<2?'0'+s2:s2;
-    };
-    return '#'+f(5)+f(3)+f(1);
-  }
   /** Recomputes evenly-spaced lightness shades (same hue/saturation as the
       group's base color) for every category currently assigned to it, so
       they read as a clear family of colors rather than unrelated hues. */
@@ -1141,71 +1088,17 @@ window.addEventListener('error', function(ev){
       pop.appendChild(sw);
     });
 
-    /* ---- sélecteur personnalisé intégré (carré S/V + teinte + hex) ---- */
-    var toggle = document.createElement('button');
-    toggle.type = 'button'; toggle.className = 'cp-custom-toggle'; toggle.textContent = '🎨 Autre couleur…';
-    var panel = document.createElement('div');
-    panel.className = 'cp-custom';
-    panel.innerHTML =
-      '<div class="cp-sv"><div class="cp-thumb"></div></div>' +
-      '<div class="cp-hue"><div class="cp-thumb"></div></div>' +
-      '<div class="cp-hex-row"><span class="cp-preview"></span>' +
-      '<input type="text" maxlength="7" spellcheck="false" autocapitalize="off" autocomplete="off"></div>';
-    pop.appendChild(toggle);
-    pop.appendChild(panel);
-
-    var sv = panel.querySelector('.cp-sv'), svThumb = sv.firstChild;
-    var hue = panel.querySelector('.cp-hue'), hueThumb = hue.firstChild;
-    var preview = panel.querySelector('.cp-preview'), hexInput = panel.querySelector('input');
-    var hsv = hexToHsv(initialColor || '#6B6F76');
-
-    function paint(){
-      var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
-      sv.style.setProperty('--h', hsv.h);
-      svThumb.style.left = (hsv.s*100) + '%';
-      svThumb.style.top = ((1-hsv.v)*100) + '%';
-      svThumb.style.background = hex;
-      hueThumb.style.left = (hsv.h/360*100) + '%';
-      hueThumb.style.background = 'hsl(' + hsv.h + ',100%,50%)';
-      preview.style.background = hex;
-      btn.style.setProperty('--sw', hex);
-      if(document.activeElement !== hexInput) hexInput.value = hex.toUpperCase();
-      return hex;
-    }
-    function clamp01(x){ return Math.min(1, Math.max(0, x)); }
-    // La couleur n'est appliquée (sauvegarde + rendu) qu'au relâchement du doigt.
-    function makeDraggable(el, apply){
-      var active = false;
-      function move(e){
-        var r = el.getBoundingClientRect();
-        apply(clamp01((e.clientX - r.left)/r.width), clamp01((e.clientY - r.top)/r.height));
-        paint();
-      }
-      el.addEventListener('pointerdown', function(e){
-        active = true;
-        try{ el.setPointerCapture(e.pointerId); }catch(err){}
-        e.preventDefault(); move(e);
-      });
-      el.addEventListener('pointermove', function(e){ if(active) move(e); });
-      function end(){ if(!active) return; active = false; onChange(paint()); }
-      el.addEventListener('pointerup', end);
-      el.addEventListener('pointercancel', end);
-    }
-    makeDraggable(sv, function(x, y){ hsv.s = x; hsv.v = 1 - y; });
-    makeDraggable(hue, function(x){ hsv.h = x * 360; });
-
-    hexInput.addEventListener('input', function(){
-      var v = hexInput.value.trim();
-      if(v.charAt(0) !== '#') v = '#' + v;
-      if(/^#[0-9a-fA-F]{6}$/.test(v)){ hsv = hexToHsv(v); paint(); }
+    var customRow = document.createElement('label');
+    customRow.className = 'color-swatch-custom';
+    var customInput = document.createElement('input');
+    customInput.type = 'color'; customInput.value = initialColor || '#6B6F76';
+    customInput.addEventListener('input', function(){
+      btn.style.setProperty('--sw', customInput.value);
+      onChange(customInput.value);
     });
-    hexInput.addEventListener('change', function(){ onChange(paint()); });
-
-    toggle.addEventListener('click', function(e){
-      e.stopPropagation();
-      panel.classList.toggle('is-open');
-      if(panel.classList.contains('is-open')) paint();
-    });
+    customRow.appendChild(customInput);
+    customRow.appendChild(document.createTextNode('Autre couleur…'));
+    pop.appendChild(customRow);
 
     btn.addEventListener('click', function(e){
       e.stopPropagation();
@@ -1216,7 +1109,7 @@ window.addEventListener('error', function(ev){
 
     wrap.appendChild(btn);
     wrap.appendChild(pop);
-    wrap.setColor = function(hex){ hsv = hexToHsv(hex); btn.style.setProperty('--sw', hex); hexInput.value = hex.toUpperCase(); };
+    wrap.setColor = function(hex){ btn.style.setProperty('--sw', hex); };
     return wrap;
   }
 
@@ -2127,4 +2020,97 @@ window.addEventListener('error', function(ev){
   }
 
   function renderMonth(ref){
-    var year = ref
+    var year = ref.getFullYear(), month = ref.getMonth();
+    var firstOfMonth = new Date(year, month, 1);
+    var gridStart = getWeekStart(firstOfMonth);
+    var today = new Date();
+    var weekdayNames = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+    var html = '<div class="month-grid">';
+    weekdayNames.forEach(function(w){ html += '<div class="month-weekday">' + w + '</div>'; });
+
+    for(var i=0;i<42;i++){
+      var d = addDays(gridStart, i);
+      var ds = toDateStr(d);
+      var muted = d.getMonth() !== month;
+      var isToday = sameDay(d, today);
+      var dayTasks = tasksForDate(ds).sort(function(a,b){
+        var am = a.time ? timeToMinutes(a.time) : -1, bm = b.time ? timeToMinutes(b.time) : -1;
+        return am - bm;
+      });
+      var deadlineTasks = deadlineMarkersForDate(ds);
+
+      html += '<div class="month-cell' + (muted?' muted':'') + '" data-date="' + ds + '">';
+      html += '<span class="month-daynum' + (isToday?' is-today':'') + '" data-goto="' + ds + '">' + d.getDate() + '</span>';
+      var shown = dayTasks.slice(0,2);
+      shown.forEach(function(t){
+        var cat = getCategory(t.category);
+        var isReminder = taskType(t) === 'reminder';
+        var prefix = isReminder ? '🚩 ' : (t.time ? (t.time + ' ') : '');
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
+      });
+      deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
+        var cat = getCategory(t.category);
+        html += '<div class="month-chip is-deadline" style="--cat:' + cat.color + '" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</div>';
+      });
+      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0,2-shown.length));
+      if(extra > 0){ html += '<div class="month-more">+' + extra + ' de plus</div>'; }
+      html += '</div>';
+    }
+    html += '</div>';
+    calendarBody.innerHTML = html;
+
+    calendarBody.querySelectorAll('.month-daynum').forEach(function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        currentDate = parseDateStr(el.dataset.goto);
+        calendarView = 'day';
+        setActiveViewButton();
+        renderCalendar();
+      });
+    });
+    calendarBody.querySelectorAll('.month-cell').forEach(function(cell){
+      cell.addEventListener('click', function(e){
+        if(e.target.closest('[data-open]') || e.target.closest('.month-daynum')) return;
+        openModal('create', { date: cell.dataset.date });
+      });
+    });
+    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+  }
+
+  /** Wires a [data-open] element (task block, month chip, all-day chip) so
+      a single click opens it for editing, while a double-click instead
+      toggles it done/not-done right there in the calendar - no need to
+      open the task first. A short timer tells the two apart: a click
+      waits briefly before opening the modal, and is cancelled if a second
+      click (dblclick) arrives in that window. */
+  function wireOpenElement(el){
+    var pendingClick = null;
+    el.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
+      pendingClick = setTimeout(function(){
+        pendingClick = null;
+        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+        if(t) openModal('edit', t);
+      }, 260);
+    });
+    el.addEventListener('dblclick', function(ev){
+      ev.stopPropagation();
+      if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
+      var t = tasks.find(function(x){ return x.id === el.dataset.open; });
+      if(t){ t.done = !t.done; saveTasks(); renderAll(); }
+    });
+  }
+
+  /* ---------------- toolbar controls ---------------- */
+  document.getElementById('prev-btn').addEventListener('click', function(){ step(-1); });
+  document.getElementById('next-btn').addEventListener('click', function(){ step(1); });
+  document.getElementById('today-btn').addEventListener('click', function(){ currentDate = new Date(); currentDate.setHours(0,0,0,0); renderCalendar(); });
+  function step(dir){
+    if(calendarView === 'day') currentDate = addDays(curr
