@@ -1,10 +1,8 @@
 package com.arwin.agenda;
 
-import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
@@ -44,23 +41,15 @@ import java.util.Locale;
  * resolved category color, added at sync time by the web app). This
  * provider reads that same file directly - no network calls, works fully
  * offline.
- *
- * Auto-reset: after RESET_DELAY_MS without any prev/next click, the widget
- * goes back to today. Two mechanisms: an inexact alarm (active reset) and a
- * lazy check at every redraw (safety net if the alarm is delayed or lost).
  */
 public class AgendaWidgetProvider extends AppWidgetProvider {
 
     public static final String ACTION_PREV_DAY = "com.arwin.agenda.ACTION_PREV_DAY";
     public static final String ACTION_NEXT_DAY = "com.arwin.agenda.ACTION_NEXT_DAY";
-    public static final String ACTION_RESET_DAY = "com.arwin.agenda.ACTION_RESET_DAY";
 
     private static final String CAPACITOR_PREFS = "CapacitorStorage";
     private static final String TASKS_KEY = "agenda_widget_tasks";
     private static final String WIDGET_STATE_PREFS = "agenda_widget_state";
-
-    // Délai d'inactivité avant retour automatique à aujourd'hui
-    private static final long RESET_DELAY_MS = 2 * 60 * 1000; // 2 min
 
     private static final int HOUR_START = 6;
     private static final int HOUR_END = 22;
@@ -89,16 +78,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
             int delta = ACTION_PREV_DAY.equals(action) ? -1 : 1;
             SharedPreferences state = context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE);
             int offset = state.getInt("offset_" + appWidgetId, 0) + delta;
-            state.edit()
-                    .putInt("offset_" + appWidgetId, offset)
-                    .putLong("last_" + appWidgetId, System.currentTimeMillis())
-                    .apply();
-            if (offset != 0) scheduleReset(context, appWidgetId);
-            else cancelReset(context, appWidgetId);
-            updateWidget(context, AppWidgetManager.getInstance(context), appWidgetId);
-        } else if (ACTION_RESET_DAY.equals(action)) {
-            context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE)
-                    .edit().putInt("offset_" + appWidgetId, 0).apply();
+            state.edit().putInt("offset_" + appWidgetId, offset).apply();
             updateWidget(context, AppWidgetManager.getInstance(context), appWidgetId);
         }
     }
@@ -107,31 +87,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     public void onDeleted(Context context, int[] appWidgetIds) {
         SharedPreferences state = context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = state.edit();
-        for (int id : appWidgetIds) {
-            editor.remove("offset_" + id).remove("last_" + id);
-            cancelReset(context, id);
-        }
+        for (int id : appWidgetIds) editor.remove("offset_" + id);
         editor.apply();
-    }
-
-    /**
-     * Remet tous les widgets sur aujourd'hui. Appelée par AgendaApp quand
-     * l'écran se verrouille (ACTION_SCREEN_OFF).
-     */
-    public static void resetAllToToday(Context context) {
-        AppWidgetManager mgr = AppWidgetManager.getInstance(context);
-        int[] ids = mgr.getAppWidgetIds(new ComponentName(context, AgendaWidgetProvider.class));
-        if (ids == null || ids.length == 0) return;
-
-        SharedPreferences.Editor editor =
-                context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE).edit();
-        for (int id : ids) editor.putInt("offset_" + id, 0);
-        editor.apply();
-
-        Intent update = new Intent(context, AgendaWidgetProvider.class);
-        update.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        update.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
-        context.sendBroadcast(update);
     }
 
     private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
@@ -160,14 +117,6 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
 
         SharedPreferences state = context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE);
         int offset = state.getInt("offset_" + appWidgetId, 0);
-
-        // Garde-fou : si le délai d'inactivité est dépassé (alarme retardée
-        // ou perdue à cause de Doze / redémarrage), on revient à aujourd'hui.
-        long last = state.getLong("last_" + appWidgetId, 0);
-        if (offset != 0 && System.currentTimeMillis() - last > RESET_DELAY_MS) {
-            offset = 0;
-            state.edit().putInt("offset_" + appWidgetId, 0).apply();
-        }
 
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DAY_OF_YEAR, offset);
@@ -385,7 +334,7 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         return Color.rgb(r, g, b);
     }
 
-    // Each PendingIntent (open-app, prev, next, reset) gets its own clearly
+    // Each PendingIntent (open-app, prev, next) gets its own clearly
     // separated request-code range per widget instance, so there is no
     // possible overlap between them regardless of how many widgets are
     // placed or how many times they've been paged through.
@@ -407,34 +356,6 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
                 context, requestCode, openAppIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-    }
-
-    /* ================================================================
-       Retour automatique à aujourd'hui (alarme d'inactivité)
-    ================================================================= */
-    private PendingIntent resetIntent(Context context, int appWidgetId) {
-        Intent intent = new Intent(context, AgendaWidgetProvider.class);
-        intent.setAction(ACTION_RESET_DAY);
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        return PendingIntent.getBroadcast(
-                context, appWidgetId * 100 + 4, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-    }
-
-    private void scheduleReset(Context context, int appWidgetId) {
-        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (am == null) return;
-        // Même PendingIntent à chaque clic : l'alarme précédente est remplacée,
-        // le délai repart donc de zéro.
-        am.set(AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + RESET_DELAY_MS,
-                resetIntent(context, appWidgetId));
-    }
-
-    private void cancelReset(Context context, int appWidgetId) {
-        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.cancel(resetIntent(context, appWidgetId));
     }
 
     private String dateLabel(int offset, Calendar cal) {
