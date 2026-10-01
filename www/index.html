@@ -367,6 +367,7 @@
   .day-track-header .num{ font-family:var(--font-display); font-size:17px; display:block; color:var(--ink); }
   .day-track-header.is-today .num{ color:var(--accent); }
 
+  .allday-tray:empty{ display:none; }
   .allday-tray{ display:flex; gap:6px; padding:6px 6px 6px 58px; flex-wrap:wrap; min-height:6px; }
   .allday-chip{
     display:inline-flex; align-items:center; gap:5px; background:var(--cat-soft, var(--accent-soft));
@@ -541,22 +542,39 @@
   .color-popover{
     display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:60;
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); box-shadow:var(--shadow-modal);
-    padding:10px; width:186px; grid-template-columns:repeat(6, 1fr); gap:8px;
+    padding:10px; width:224px; grid-template-columns:repeat(6, 1fr); gap:8px;
   }
   .color-popover.is-open{ display:grid; }
   .color-swatch-option{
     width:24px; height:24px; border-radius:50%; border:2px solid transparent; background:var(--sw); padding:0;
   }
   .color-swatch-option.is-selected{ border-color:var(--ink); box-shadow:0 0 0 2px var(--surface) inset; }
-  .color-swatch-custom{
-    grid-column:span 6; display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-soft);
-    border-top:1px solid var(--line-soft); padding-top:8px; margin-top:2px; cursor:pointer;
+
+  /* ---------- sélecteur de couleur personnalisée (intégré) ---------- */
+  .cp-custom-toggle{
+    grid-column:span 6; border:none; border-top:1px solid var(--line-soft); background:none;
+    padding:9px 0 2px; margin-top:2px; font-size:12px; font-weight:600; color:var(--accent-dark); text-align:left;
   }
-  .color-swatch-custom input[type=color]{
-    -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%; border:1px solid var(--line); padding:0;
+  .cp-custom{ grid-column:span 6; display:none; flex-direction:column; gap:12px; padding-top:8px; }
+  .cp-custom.is-open{ display:flex; }
+  .cp-sv{
+    position:relative; height:130px; border-radius:10px; touch-action:none; cursor:crosshair;
+    background-color:hsl(var(--h,0),100%,50%);
+    background-image:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent);
   }
-  .color-swatch-custom input[type=color]::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
-  .color-swatch-custom input[type=color]::-webkit-color-swatch{ border:none; border-radius:50%; }
+  .cp-hue{
+    position:relative; height:16px; border-radius:999px; touch-action:none; cursor:pointer;
+    background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+  }
+  .cp-thumb{
+    position:absolute; width:20px; height:20px; border-radius:50%; border:3px solid #fff;
+    box-shadow:0 0 0 1px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.3);
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  .cp-hue .cp-thumb{ top:50%; }
+  .cp-hex-row{ display:flex; align-items:center; gap:8px; }
+  .cp-preview{ width:34px; height:34px; border-radius:8px; border:1px solid var(--line); flex:none; }
+  .cp-hex-row input{ flex:1; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.04em; }
 
   /* responsive */
   @media (max-width: 1180px){
@@ -588,6 +606,7 @@
        whole grid scroll sideways - the time gutter stays put. Day view
        (single column) is untouched and keeps filling the screen width. */
     .is-week .grid-scroll{ overflow-x:auto; }
+    .is-week .sticky-head{ width:max-content; min-width:100%; }
     .is-week .week-header-row{ width:max-content; min-width:100%; }
     .is-week .time-grid{ width:max-content; min-width:100%; }
     .is-week .day-track-header{ flex:none; width:96px; }
@@ -847,6 +866,25 @@
 <script src="capacitor-plugins/capacitor-preferences.js"></script>
 <script src="capacitor-plugins/capacitor-local-notifications.js"></script>
 <script>
+/* Bandeau de diagnostic : affiche à l'écran toute erreur JavaScript. */
+window.__showJsError = function(msg){
+  try{
+    var b = document.getElementById('js-error-banner');
+    if(!b){
+      b = document.createElement('div');
+      b.id = 'js-error-banner';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#B23A3A;color:#fff;font:12px/1.4 monospace;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;white-space:pre-wrap;word-break:break-word;';
+      b.onclick = function(){ b.style.display = 'none'; };
+      document.body.appendChild(b);
+    }
+    b.textContent += 'Erreur : ' + msg + '\n';
+  }catch(e){}
+};
+window.addEventListener('error', function(ev){
+  window.__showJsError((ev.message || 'inconnue') + (ev.lineno ? ' (ligne ' + ev.lineno + ')' : ''));
+});
+</script>
+<script>
 (function(){
   "use strict";
 
@@ -894,7 +932,7 @@
 
   /* ---------------- storage ---------------- */
   function loadTasks(){
-    try{ var raw = localStorage.getItem(TASKS_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; }
+    try{ var raw = localStorage.getItem(TASKS_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr.filter(function(t){ return t && typeof t === 'object'; }) : []; }catch(e){ return []; }
   }
   function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); }
 
@@ -924,7 +962,17 @@
   function loadCategories(){
     try{
       var raw = localStorage.getItem(CATS_KEY);
-      if(raw){ var parsed = JSON.parse(raw); if(parsed && parsed.length) return parsed; }
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(Array.isArray(parsed)){
+          parsed = parsed.filter(function(c){ return c && typeof c === 'object' && c.key; }).map(function(c){
+            if(typeof c.label !== 'string' || !c.label) c.label = String(c.key);
+            if(typeof c.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(c.color)) c.color = '#6B6F76';
+            return c;
+          });
+          if(parsed.length) return parsed;
+        }
+      }
     }catch(e){}
     return DEFAULT_CATEGORIES.slice();
   }
@@ -933,7 +981,14 @@
   function loadGroups(){
     try{
       var raw = localStorage.getItem(GROUPS_KEY);
-      if(raw){ var parsed = JSON.parse(raw); if(Array.isArray(parsed)) return parsed; }
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(Array.isArray(parsed)) return parsed.filter(function(g){ return g && typeof g === 'object' && g.key; }).map(function(g){
+          if(typeof g.label !== 'string' || !g.label) g.label = String(g.key);
+          if(typeof g.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(g.color)) g.color = '#6B6F76';
+          return g;
+        });
+      }
     }catch(e){}
     return [];
   }
@@ -990,6 +1045,27 @@
     }
     function toHex(x){ var v = Math.round(x*255); var s2 = v.toString(16); return s2.length < 2 ? '0'+s2 : s2; }
     return '#' + toHex(r) + toHex(g) + toHex(b);
+  }
+  /** HEX -> HSV (h: 0-360, s et v: 0-1). Sert au sélecteur de couleur intégré. */
+  function hexToHsv(hex){
+    var c = hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
+    var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min, h=0;
+    if(d){
+      if(max===r) h=((g-b)/d + (g<b?6:0));
+      else if(max===g) h=(b-r)/d+2;
+      else h=(r-g)/d+4;
+      h*=60;
+    }
+    return { h:h, s: max ? d/max : 0, v:max };
+  }
+  /** HSV -> HEX (h: 0-360, s et v: 0-1). */
+  function hsvToHex(h,s,v){
+    var f=function(n){
+      var k=(n+h/60)%6;
+      var x=v-v*s*Math.max(0,Math.min(k,4-k,1));
+      var s2=Math.round(x*255).toString(16); return s2.length<2?'0'+s2:s2;
+    };
+    return '#'+f(5)+f(3)+f(1);
   }
   /** Recomputes evenly-spaced lightness shades (same hue/saturation as the
       group's base color) for every category currently assigned to it, so
@@ -1088,17 +1164,72 @@
       pop.appendChild(sw);
     });
 
-    var customRow = document.createElement('label');
-    customRow.className = 'color-swatch-custom';
-    var customInput = document.createElement('input');
-    customInput.type = 'color'; customInput.value = initialColor || '#6B6F76';
-    customInput.addEventListener('input', function(){
-      btn.style.setProperty('--sw', customInput.value);
-      onChange(customInput.value);
+    /* ---- sélecteur personnalisé intégré (carré S/V + teinte + hex) ---- */
+    var toggle = document.createElement('button');
+    toggle.type = 'button'; toggle.className = 'cp-custom-toggle'; toggle.textContent = '🎨 Autre couleur…';
+    var panel = document.createElement('div');
+    panel.className = 'cp-custom';
+    panel.innerHTML =
+      '<div class="cp-sv"><div class="cp-thumb"></div></div>' +
+      '<div class="cp-hue"><div class="cp-thumb"></div></div>' +
+      '<div class="cp-hex-row"><span class="cp-preview"></span>' +
+      '<input type="text" maxlength="7" spellcheck="false" autocapitalize="off" autocomplete="off"></div>';
+    pop.appendChild(toggle);
+    pop.appendChild(panel);
+
+    var sv = panel.querySelector('.cp-sv'), svThumb = sv.firstChild;
+    var hue = panel.querySelector('.cp-hue'), hueThumb = hue.firstChild;
+    var preview = panel.querySelector('.cp-preview'), hexInput = panel.querySelector('input');
+    var hsv = hexToHsv(initialColor || '#6B6F76');
+
+    function paint(){
+      if(!isFinite(hsv.h) || !isFinite(hsv.s) || !isFinite(hsv.v)){ hsv = { h:0, s:0, v:0.5 }; }
+      var hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+      sv.style.setProperty('--h', hsv.h);
+      svThumb.style.left = (hsv.s*100) + '%';
+      svThumb.style.top = ((1-hsv.v)*100) + '%';
+      svThumb.style.background = hex;
+      hueThumb.style.left = (hsv.h/360*100) + '%';
+      hueThumb.style.background = 'hsl(' + hsv.h + ',100%,50%)';
+      preview.style.background = hex;
+      btn.style.setProperty('--sw', hex);
+      if(document.activeElement !== hexInput) hexInput.value = hex.toUpperCase();
+      return hex;
+    }
+    function clamp01(x){ return Math.min(1, Math.max(0, x)); }
+    // La couleur n'est appliquée (sauvegarde + rendu) qu'au relâchement du doigt.
+    function makeDraggable(el, apply){
+      var active = false;
+      function move(e){
+        var r = el.getBoundingClientRect();
+        apply(clamp01((e.clientX - r.left)/r.width), clamp01((e.clientY - r.top)/r.height));
+        paint();
+      }
+      el.addEventListener('pointerdown', function(e){
+        active = true;
+        try{ el.setPointerCapture(e.pointerId); }catch(err){}
+        e.preventDefault(); move(e);
+      });
+      el.addEventListener('pointermove', function(e){ if(active) move(e); });
+      function end(){ if(!active) return; active = false; onChange(paint()); }
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+    }
+    makeDraggable(sv, function(x, y){ hsv.s = x; hsv.v = 1 - y; });
+    makeDraggable(hue, function(x){ hsv.h = x * 360; });
+
+    hexInput.addEventListener('input', function(){
+      var v = hexInput.value.trim();
+      if(v.charAt(0) !== '#') v = '#' + v;
+      if(/^#[0-9a-fA-F]{6}$/.test(v)){ hsv = hexToHsv(v); paint(); }
     });
-    customRow.appendChild(customInput);
-    customRow.appendChild(document.createTextNode('Autre couleur…'));
-    pop.appendChild(customRow);
+    hexInput.addEventListener('change', function(){ onChange(paint()); });
+
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      panel.classList.toggle('is-open');
+      if(panel.classList.contains('is-open')) paint();
+    });
 
     btn.addEventListener('click', function(e){
       e.stopPropagation();
@@ -1109,7 +1240,7 @@
 
     wrap.appendChild(btn);
     wrap.appendChild(pop);
-    wrap.setColor = function(hex){ btn.style.setProperty('--sw', hex); };
+    wrap.setColor = function(hex){ hsv = hexToHsv(hex); btn.style.setProperty('--sw', hex); hexInput.value = hex.toUpperCase(); };
     return wrap;
   }
 
@@ -1932,23 +2063,7 @@
       html += '</div>';
     }
 
-    html += '<div class="allday-tray">';
-    days.forEach(function(d){
-      var ds = toDateStr(d);
-      tasksForDate(ds).filter(function(t){ return !t.time; }).forEach(function(t){
-        var cat = getCategory(t.category);
-        var isReminder = taskType(t) === 'reminder';
-        var spanTag = (!isReminder && t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
-        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
-        var lead = isReminder ? '🚩 ' : '<span class="dot"></span>';
-        html += '<span class="allday-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'" data-open="'+t.id+'">' + lead + escapeHtml(t.title) + spanTag + pieTag + '</span>';
-      });
-      deadlineMarkersForDate(ds).forEach(function(t){
-        var cat = getCategory(t.category);
-        html += '<span class="allday-chip is-deadline" style="--cat:'+cat.color+'" data-open="'+t.id+'">🚩 ' + escapeHtml(t.title) + '</span>';
-      });
-    });
-    html += '</div></div>'; // end sticky-head
+     html += '<div class="allday-tray"></div></div>'; // end sticky-head
 
     html += '<div class="time-grid" style="--hr-h:' + hourHeight + 'px">';
     html += '<div class="time-gutter">';
@@ -1967,6 +2082,25 @@
       var totalMinutes = (HOUR_END - HOUR_START) * 60;
       var trackHeight = (HOUR_END - HOUR_START) * hourHeight;
       var inner = '';
+            // --- CORRECTION : Injection des rappels en haut de la colonne du jour ---
+      var remindersInner = '<div class="day-reminders-container" style="padding: 4px; display: flex; flex-direction: column; gap: 4px;">';
+      tasksForDate(ds).filter(function(t) { return !t.time; }).forEach(function(t) {
+        var cat = getCategory(t.category);
+        var isReminder = taskType(t) === 'reminder';
+        var spanTag = (!isReminder && t.endDate && t.endDate !== t.date) ? ' <span style="opacity:.65">→ ' + fmtShort(parseDateStr(t.endDate)) + '</span>' : '';
+        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
+        var lead = isReminder ? '🚩 ' : '<span class="dot"></span>';
+        remindersInner += '<span class="allday-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:'+cat.color+';--cat-soft:'+softColor(cat.color)+'; display: inline-flex; width: 100%; box-sizing: border-box;" data-open="'+t.id+'">' + lead + escapeHtml(t.title) + spanTag + pieTag + '</span>';
+      });
+      deadlineMarkersForDate(ds).forEach(function(t) {
+        var cat = getCategory(t.category);
+        remindersInner += '<span class="allday-chip is-deadline" style="--cat:'+cat.color+'; display: inline-flex; width: 100%; box-sizing: border-box;" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</span>';
+      });
+      remindersInner += '</div>';
+      
+      var inner = remindersInner; // On initialise le contenu de la colonne avec nos rappels bien positionnés
+      // ------------------------------------------------------------------------
+
       timed.forEach(function(t){
         var top = ((t._start - HOUR_START*60) / totalMinutes) * trackHeight;
         var height = Math.max((t.duration/totalMinutes) * trackHeight, 20);
@@ -2297,14 +2431,17 @@
     }catch(e){ if (window.innerWidth <= 980) showPanel('calendar'); }
   }
 
-  buildCategorySelect();
-  buildCategoryFilters();
-  buildWeekdaySelect();
-  renderCategoryManager();
-  renderGroupManager();
-  applyStartupParams();
-  renderAll();
-  syncTasksToWidget();
+  function safeInit(name, fn){
+    try{ fn(); }catch(err){ if(window.__showJsError) window.__showJsError(name + ' : ' + (err && err.message ? err.message : err)); }
+  }
+  safeInit('catégories (sélecteur)', buildCategorySelect);
+  safeInit('catégories (filtres)', buildCategoryFilters);
+  safeInit('jours', buildWeekdaySelect);
+  safeInit('catégories (réglages)', renderCategoryManager);
+  safeInit('groupes (réglages)', renderGroupManager);
+  safeInit('onglets', applyStartupParams);
+  safeInit('affichage', renderAll);
+  safeInit('widget', syncTasksToWidget);
 
 })();
 </script>
