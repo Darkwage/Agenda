@@ -191,15 +191,10 @@
     font-size:12.5px; color:var(--accent-dark); font-weight:500;
   }
 
+  .sidebar-left .card + .card{ margin-top:16px; }
+
   /* ---------- categories manager ---------- */
   .cat-manager-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
-  .diag-output{
-    font-family:var(--font-mono); font-size:11.5px; line-height:1.6; background:var(--paper);
-    border:1px solid var(--line-soft); border-radius:var(--radius-s); padding:10px 12px;
-    white-space:pre-wrap; word-break:break-word; min-height:20px; color:var(--ink-soft);
-  }
-  .diag-output .ok{ color:#3D6B4F; font-weight:600; }
-  .diag-output .fail{ color:var(--danger); font-weight:600; }
   .cat-group-select{
     font-size:11.5px; color:var(--ink-soft); border:1px solid var(--line); border-radius:6px;
     background:var(--surface); padding:3px 5px; max-width:108px; flex:none;
@@ -682,14 +677,6 @@
         </details>
       </section>
 
-      <section class="card">
-        <details class="collapsible" id="diag-details">
-          <summary>Diagnostic widget <span class="chev">▸</span></summary>
-          <div class="field-hint" style="margin-bottom:10px;">Vérifie pourquoi les tâches n'arrivent pas jusqu'au widget d'écran d'accueil.</div>
-          <div id="diag-output" class="diag-output"></div>
-          <button type="button" class="btn-primary" id="diag-run-btn" style="margin-top:10px;">Lancer le diagnostic</button>
-        </details>
-      </section>
     </aside>
 
     <main class="calendar-panel" id="panel-calendar">
@@ -2374,40 +2361,6 @@ window.addEventListener('error', function(ev){
   }
   document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
     btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
-  });
-
-  /* ---------------- widget diagnostics ---------------- */
-  document.getElementById('diag-run-btn').addEventListener('click', function(){
-    var out = document.getElementById('diag-output');
-    var lines = [];
-    var hasCapacitor = !!(window.Capacitor);
-    lines.push(hasCapacitor
-      ? '<span class="ok">✔ Pont Capacitor détecté</span>'
-      : '<span class="fail">✘ Pont Capacitor absent</span>');
-
-    var isNative = hasCapacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-    lines.push('Plateforme : ' + (hasCapacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'inconnue') + (isNative ? ' (native)' : ' (web)'));
-
-    var hasPrefs = !!(hasCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences);
-    lines.push(hasPrefs
-      ? '<span class="ok">✔ Greffon Préférences disponible</span>'
-      : '<span class="fail">✘ Greffon Préférences introuvable</span>');
-
-    out.innerHTML = lines.join('<br>') + '<br>⏳ Test d\u2019écriture/lecture…';
-
-    if(!hasPrefs){
-      out.innerHTML += '<br><span class="fail">Impossible de tester : greffon absent.</span>';
-      return;
-    }
-
-    syncTasksToWidget();
-    window.Capacitor.Plugins.Preferences.get({ key:'agenda_widget_tasks' }).then(function(res){
-      var count = 0;
-      try{ count = JSON.parse(res.value || '[]').length; }catch(e){}
-      out.innerHTML = lines.join('<br>') + '<br><span class="ok">✔ Écriture/lecture réussie</span> — ' + count + ' tâche(s) transmise(s) au widget.';
-    }).catch(function(err){
-      out.innerHTML = lines.join('<br>') + '<br><span class="fail">✘ Erreur : ' + String(err) + '</span>';
-    });
   });
 
   /* ---------------- init ---------------- */
