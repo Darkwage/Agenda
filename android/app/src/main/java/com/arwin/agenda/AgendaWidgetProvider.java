@@ -432,9 +432,15 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         if (am == null) return;
         // Même PendingIntent à chaque clic : l'alarme précédente est remplacée,
         // le délai repart donc de zéro.
-        am.set(AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + RESET_DELAY_MS,
-                resetIntent(context, appWidgetId));
+        // Alarme « réveillante » : elle se déclenche même téléphone verrouillé
+        // et même si l'appli n'est plus en mémoire (contrairement au récepteur
+        // de verrouillage d'AgendaApp, qui ne vit que tant que le processus existe).
+        long triggerAt = SystemClock.elapsedRealtime() + RESET_DELAY_MS;
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, resetIntent(context, appWidgetId));
+        } else {
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, resetIntent(context, appWidgetId));
+        }
     }
 
     private void cancelReset(Context context, int appWidgetId) {
