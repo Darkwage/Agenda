@@ -422,6 +422,16 @@
   .month-chip.is-deadline{ background:transparent; border-style:dashed; }
   .month-more{ font-size:10px; color:var(--ink-faint); font-family:var(--font-mono); padding-left:3px; }
 
+  /* ---------- temps de trajet (autour d'une tâche horaire) ---------- */
+  .travel-block{
+    position:absolute; border-radius:6px; overflow:hidden; padding:2px 5px; cursor:pointer;
+    border:1px dashed var(--cat, var(--accent)); border-left:3px dashed var(--cat, var(--accent));
+    background-color:#fff;
+    background-image:repeating-linear-gradient(135deg, var(--cat-hatch, rgba(47,93,80,.25)) 0, var(--cat-hatch, rgba(47,93,80,.25)) 4px, transparent 4px, transparent 9px);
+    font-family:var(--font-mono); font-size:9px; line-height:1.2; color:var(--ink-soft);
+  }
+  .travel-block.done{ --cat:#3D6B4F !important; --cat-hatch:rgba(61,107,79,.25) !important; opacity:.6; }
+
   /* ---------- FAB ---------- */
   .fab{
     position:fixed; right:calc(24px + env(safe-area-inset-right)); bottom:calc(24px + env(safe-area-inset-bottom));
@@ -706,6 +716,9 @@
             <input type="checkbox" id="notif-enabled">
             <label for="notif-enabled">🔔 Alertes sonores à l'heure de la tâche</label>
           </div>
+          <div class="toggle-row">
+            <button type="button" class="btn-ghost" id="notif-test-btn" style="width:100%;">Tester le bip (dans 10 s)</button>
+          </div>
         </div>
       </div>
 
@@ -777,6 +790,21 @@
           <button type="button" class="preset-btn" data-min="90">1 h 30</button>
           <button type="button" class="preset-btn" data-min="120">2 h</button>
         </div>
+      </div>
+
+      <div class="field" id="travel-field">
+        <label class="field-label">🚗 Temps de trajet <span class="field-hint-inline">(optionnel)</span></label>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="f-travel-before" style="font-weight:500;">Avant (min)</label>
+            <input type="number" id="f-travel-before" min="0" max="240" step="5" value="0">
+          </div>
+          <div class="field">
+            <label class="field-label" for="f-travel-after" style="font-weight:500;">Après (min)</label>
+            <input type="number" id="f-travel-after" min="0" max="240" step="5" value="0">
+          </div>
+        </div>
+        <div class="field-hint">Affiché en hachuré autour de la tâche dans le calendrier.</div>
       </div>
 
       <div class="field checkbox-field" id="alert-field">
@@ -928,7 +956,7 @@ window.addEventListener('error', function(ev){
   function loadTasks(){
     try{ var raw = localStorage.getItem(TASKS_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr.filter(function(t){ return t && typeof t === 'object'; }) : []; }catch(e){ return []; }
   }
-  function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); }
+  function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); scheduleTaskNotificationsSoon(); }
 
   // Mirrors the task list into native storage so the Android home screen
   // widget (which runs outside the WebView) can read it. Each task is
@@ -1005,6 +1033,10 @@ window.addEventListener('error', function(ev){
     var c = hexToRgb(hex);
     function mix(v){ return Math.round(v*0.15 + 255*0.85); }
     return 'rgb(' + mix(c.r) + ',' + mix(c.g) + ',' + mix(c.b) + ')';
+  }
+  function hatchColor(hex){
+    var c = hexToRgb(hex);
+    return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',.28)';
   }
   function hexToHsl(hex){
     var c = hexToRgb(hex);
@@ -1565,6 +1597,7 @@ window.addEventListener('error', function(ev){
     document.getElementById('time-field').style.display = (type === 'timed') ? '' : 'none';
     document.getElementById('duration-field').style.display = (type === 'timed') ? '' : 'none';
     document.getElementById('alert-field').style.display = (type === 'timed') ? '' : 'none';
+    document.getElementById('travel-field').style.display = (type === 'timed') ? '' : 'none';
     document.getElementById('enddate-field').style.display = (type === 'allday') ? '' : 'none';
     // A reminder is by definition deadline-free, so hide that field for it.
     document.getElementById('f-deadline').closest('.field').style.display = (type === 'reminder') ? 'none' : '';
@@ -1613,6 +1646,8 @@ window.addEventListener('error', function(ev){
       setTaskType(taskType(prefill));
       selectedProgress = (typeof prefill.progress === 'number') ? prefill.progress : null;
       document.getElementById('f-alert').checked = prefill.alert !== false;
+      document.getElementById('f-travel-before').value = prefill.travelBefore || 0;
+      document.getElementById('f-travel-after').value = prefill.travelAfter || 0;
       selectedCategory = prefill.category;
       recurrenceField.style.display = 'none';
       document.getElementById('modal-delete-btn').style.display = '';
@@ -1638,6 +1673,8 @@ window.addEventListener('error', function(ev){
       setTaskType((prefill && prefill.type) || 'timed');
       selectedProgress = (prefill && typeof prefill.progress === 'number') ? prefill.progress : null;
       document.getElementById('f-alert').checked = !(prefill && prefill.alert === false);
+      document.getElementById('f-travel-before').value = (prefill && prefill.travelBefore) || 0;
+      document.getElementById('f-travel-after').value = (prefill && prefill.travelAfter) || 0;
       if(prefill && prefill.category) selectedCategory = prefill.category;
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
@@ -1710,7 +1747,7 @@ window.addEventListener('error', function(ev){
     openModal('create', {
       title: t.title + ' (copie)', category: t.category, date: t.date, time: t.time,
       duration: t.duration, deadline: t.deadline, type: taskType(t), endDate: t.endDate,
-      progress: t.progress, alert: t.alert
+      progress: t.progress, alert: t.alert, travelBefore: t.travelBefore, travelAfter: t.travelAfter
     });
   }
 
@@ -1824,6 +1861,8 @@ window.addEventListener('error', function(ev){
     var progress = (typeof selectedProgress === 'number') ? selectedProgress : undefined;
     // Bip : activé par défaut ; seule la désactivation est enregistrée (alert:false).
     var alertOn = isTimed ? document.getElementById('f-alert').checked : true;
+    function readTravel(id){ return isTimed ? Math.max(0, Math.min(240, parseInt(document.getElementById(id).value, 10) || 0)) : 0; }
+    var travelBefore = readTravel('f-travel-before'), travelAfter = readTravel('f-travel-after');
     if(!title || !date) return;
 
     if(editingId){
@@ -1833,6 +1872,8 @@ window.addEventListener('error', function(ev){
         t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate;
         t.reminder = isReminder ? true : undefined;
         if(alertOn) delete t.alert; else t.alert = false;
+        if(travelBefore) t.travelBefore = travelBefore; else delete t.travelBefore;
+        if(travelAfter) t.travelAfter = travelAfter; else delete t.travelAfter;
         if(progress === undefined) delete t.progress; else t.progress = progress;
 
         // Adding dates while editing extends the series. If this task wasn't
@@ -1848,7 +1889,7 @@ window.addEventListener('error', function(ev){
               id: uid(), title:title, category:selectedCategory, date:d, time:time,
               duration:duration, deadline:deadline, endDate: isAllDay ? d : '',
               reminder: isReminder ? true : undefined,
-              alert: alertOn ? undefined : false,
+              alert: alertOn ? undefined : false, travelBefore: travelBefore || undefined, travelAfter: travelAfter || undefined,
               progress: progress,
               done:false, recurrenceId:t.recurrenceId, recurrenceLabel:t.recurrenceLabel
             });
@@ -1863,7 +1904,7 @@ window.addEventListener('error', function(ev){
 
     var recType = document.getElementById('f-recurrence').value;
     if(recType === 'none'){
-      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, progress: progress, done:false });
+      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, travelBefore: travelBefore || undefined, travelAfter: travelAfter || undefined, progress: progress, done:false });
     } else {
       var endType = document.querySelector('input[name=rec-end]:checked').value;
       var rec = {
@@ -1878,7 +1919,7 @@ window.addEventListener('error', function(ev){
       var recurrenceId = uid();
       var label = recurrenceLabelText(rec);
       dates.forEach(function(d){
-        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, progress: progress, done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
+        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, travelBefore: travelBefore || undefined, travelAfter: travelAfter || undefined, progress: progress, done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
       });
     }
     saveTasks();
@@ -1954,6 +1995,12 @@ window.addEventListener('error', function(ev){
     if(t.deadline){
       var overdue = !t.done && t.deadline < todayStr();
       metaBits += '<span class="deadline-tag' + (overdue?' overdue':'') + '">🚩 ' + fmtShort(parseDateStr(t.deadline)) + '</span>';
+    }
+    if(t.travelBefore || t.travelAfter){
+      var trParts = [];
+      if(t.travelBefore) trParts.push(t.travelBefore + ' min avant');
+      if(t.travelAfter) trParts.push(t.travelAfter + ' min après');
+      metaBits += '<span>🚗 ' + trParts.join(' · ') + '</span>';
     }
     if(typeof t.progress === 'number'){
       metaBits += '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="pie pie-sm" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' + t.progress + '%</span>';
@@ -2076,7 +2123,9 @@ window.addEventListener('error', function(ev){
       var isToday = sameDay(d, new Date());
       var timed = tasksForDate(ds).filter(function(t){ return !!t.time; }).map(function(t){
         var s = timeToMinutes(t.time);
-        return Object.assign({}, t, { _start:s, _end:s + t.duration });
+        var tb = t.travelBefore || 0, ta = t.travelAfter || 0;
+        // _rs = vrai début ; _start/_end englobent les trajets pour que deux tâches ne se chevauchent pas.
+        return Object.assign({}, t, { _rs:s, _start:s - tb, _end:s + t.duration + ta });
       }).sort(function(a,b){ return a._start - b._start; });
       layoutColumns(timed);
 
@@ -2103,7 +2152,7 @@ window.addEventListener('error', function(ev){
       // ------------------------------------------------------------------------
 
       timed.forEach(function(t){
-        var top = ((t._start - HOUR_START*60) / totalMinutes) * trackHeight;
+        var top = ((t._rs - HOUR_START*60) / totalMinutes) * trackHeight;
         var height = Math.max((t.duration/totalMinutes) * trackHeight, 20);
         var widthPct = 100 / t._cols;
         var leftPct = t._col * widthPct;
@@ -2111,6 +2160,16 @@ window.addEventListener('error', function(ev){
         var flag = t.deadline ? '🚩 ' : '';
         var doneMark = t.done ? '✓ ' : '';
         var progressBar = isTaskActiveNow(t) ? '<div class="task-progress" style="width:' + taskProgressPct(t) + '%"></div>' : '';
+        var colStyle = 'left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-hatch:' + hatchColor(cat.color);
+        var travelHtml = function(fromMin, toMin, label){
+          var f = Math.max(fromMin, HOUR_START*60), e = Math.min(toMin, HOUR_END*60);
+          if(e <= f) return '';
+          var tp = ((f - HOUR_START*60) / totalMinutes) * trackHeight;
+          var th = Math.max(((e - f) / totalMinutes) * trackHeight, 6);
+          return '<div class="travel-block' + (t.done?' done':'') + '" data-open="' + t.id + '" style="top:' + tp + 'px;height:' + th + 'px;' + colStyle + '">' + (th >= 16 ? '🚗 ' + label : '') + '</div>';
+        };
+        if(t.travelBefore) inner += travelHtml(t._rs - t.travelBefore, t._rs, t.travelBefore + ' min');
+        if(t.travelAfter) inner += travelHtml(t._rs + t.duration, t._rs + t.duration + t.travelAfter, t.travelAfter + ' min');
         inner += '<div class="task-block' + (t.done?' done':'') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
           '<div class="tb-title">' + doneMark + flag + escapeHtml(t.title) + '</div>' +
           '<div class="tb-time">' + t.time + ' · ' + formatDuration(t.duration) + '</div>' +
@@ -2261,7 +2320,7 @@ window.addEventListener('error', function(ev){
 
   /* ---------------- notifications (sound + vibration) toggle ---------------- */
   var NOTIF_KEY = 'agenda_notif_enabled';
-  var TASK_CHANGE_CHANNEL = 'agenda-task-changes';
+  var TASK_CHANGE_CHANNEL = 'agenda-task-changes-v2'; // nouvel identifiant : Android fige les réglages d'un canal existant
   var notifCheckbox = document.getElementById('notif-enabled');
   notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
 
@@ -2281,13 +2340,18 @@ window.addEventListener('error', function(ev){
         description: 'Bip discret et vibration au démarrage d\u2019une tâche.',
         sound: 'beep.wav',
         vibration: true,
-        importance: 3
+        importance: 4,
+        visibility: 1
       });
     }catch(e){}
   }
 
   notifCheckbox.addEventListener('change', function(e){
-    if(!e.target.checked){ localStorage.setItem(NOTIF_KEY, '0'); return; }
+    if(!e.target.checked){
+      localStorage.setItem(NOTIF_KEY, '0');
+      cancelAllScheduledNotifications();
+      return;
+    }
 
     var nativeLN = nativeLocalNotifications();
     if(nativeLN){
@@ -2296,7 +2360,9 @@ window.addEventListener('error', function(ev){
       nativeLN.requestPermissions().then(function(res){
         if(res && res.display === 'granted'){
           ensureTaskChangeChannel(nativeLN);
+          ensureExactAlarm(nativeLN);
           localStorage.setItem(NOTIF_KEY, '1');
+          scheduleTaskNotifications();
         } else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
       });
     } else if('Notification' in window){
@@ -2334,10 +2400,92 @@ window.addEventListener('error', function(ev){
     }
   }
 
+  /* ---------------- notifications programmées à l'avance (appli fermée / téléphone verrouillé) ---------------- */
+  function notifIdFor(taskId){
+    var h = 7;
+    for(var i = 0; i < taskId.length; i++){ h = (h * 31 + taskId.charCodeAt(i)) | 0; }
+    return (Math.abs(h) % 2000000000) + 1;
+  }
+  function ensureExactAlarm(ln){
+    try{
+      if(ln.checkExactNotificationSetting){
+        ln.checkExactNotificationSetting().then(function(r){
+          if(r && r.exact_alarm !== 'granted' && ln.changeExactNotificationSetting){ ln.changeExactNotificationSetting(); }
+        }).catch(function(){});
+      }
+    }catch(e){}
+  }
+  function cancelAllScheduledNotifications(){
+    var ln = nativeLocalNotifications();
+    if(!ln) return Promise.resolve();
+    return ln.getPending().then(function(res){
+      var pending = (res && res.notifications) ? res.notifications : [];
+      if(!pending.length) return null;
+      return ln.cancel({ notifications: pending.map(function(n){ return { id: n.id }; }) });
+    }).catch(function(){});
+  }
+  var notifTimer = null;
+  function scheduleTaskNotificationsSoon(){
+    if(notifTimer) clearTimeout(notifTimer);
+    notifTimer = setTimeout(scheduleTaskNotifications, 800);
+  }
+  /** Reprogramme auprès d'Android le bip de chaque tâche horaire à venir (14 jours).
+      Android les déclenche lui-même, appli fermée et téléphone verrouillé. */
+  function scheduleTaskNotifications(){
+    var ln = nativeLocalNotifications();
+    if(!ln || localStorage.getItem(NOTIF_KEY) !== '1') return;
+    cancelAllScheduledNotifications().then(function(){
+      var now = Date.now(), horizon = now + 14 * 86400000, items = [];
+      tasks.forEach(function(t){
+        if(!t.time || !t.date || t.done || t.alert === false) return;
+        var d = parseDateStr(t.date), p = t.time.split(':').map(Number);
+        d.setHours(p[0], p[1], 0, 0);
+        var at = d.getTime();
+        if(at <= now + 2000 || at > horizon) return;
+        items.push({ at: at, t: t });
+      });
+      items.sort(function(a, b){ return a.at - b.at; });
+      items = items.slice(0, 120);
+      if(!items.length) return null;
+      return ln.schedule({ notifications: items.map(function(it){
+        var cat = getCategory(it.t.category);
+        return {
+          id: notifIdFor(it.t.id),
+          title: '▶ ' + it.t.title,
+          body: cat.label + ' · commence maintenant (' + formatDuration(it.t.duration) + ')',
+          channelId: TASK_CHANGE_CHANNEL,
+          schedule: { at: new Date(it.at), allowWhileIdle: true }
+        };
+      }) });
+    }).catch(function(){});
+  }
+  function startupNotifications(){
+    var ln = nativeLocalNotifications();
+    if(!ln || localStorage.getItem(NOTIF_KEY) !== '1') return;
+    ensureTaskChangeChannel(ln);
+    ensureExactAlarm(ln);
+    scheduleTaskNotifications();
+  }
+  document.getElementById('notif-test-btn').addEventListener('click', function(){
+    var ln = nativeLocalNotifications();
+    if(!ln){ alert('Le test fonctionne uniquement dans l\u2019appli Android.'); return; }
+    if(localStorage.getItem(NOTIF_KEY) !== '1'){ alert('Activez d\u2019abord « Alertes sonores à l\u2019heure de la tâche ».'); return; }
+    ensureTaskChangeChannel(ln);
+    ln.schedule({ notifications: [{
+      id: 2000000001,
+      title: '🔔 Test du bip',
+      body: 'Si vous lisez ceci avec le bip/la vibration, tout fonctionne.',
+      channelId: TASK_CHANGE_CHANNEL,
+      schedule: { at: new Date(Date.now() + 10000), allowWhileIdle: true }
+    }] }).then(function(){
+      alert('Test programmé. Verrouillez le téléphone : le bip arrive dans 10 secondes.');
+    }).catch(function(err){ alert('Échec : ' + String(err)); });
+  });
+
   /* ---------------- live clock: refreshes the now-line, progress bars, and fires start-of-task alerts ---------------- */
   var notifiedThisSession = {};
   function liveTick(){
-    if(notificationsEnabled()){
+    if(notificationsEnabled() && !nativeLocalNotifications()){
       var nm = nowMinutes(), ds = todayStr();
       tasks.forEach(function(t){
         if(!t.time || t.date !== ds || t.done || t.alert === false) return;
@@ -2409,6 +2557,7 @@ window.addEventListener('error', function(ev){
   safeInit('onglets', applyStartupParams);
   safeInit('affichage', renderAll);
   safeInit('widget', syncTasksToWidget);
+  safeInit('notifications', startupNotifications);
 
 })();
 </script>
