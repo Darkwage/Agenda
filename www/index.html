@@ -779,6 +779,13 @@
         </div>
       </div>
 
+      <div class="field checkbox-field" id="alert-field">
+        <label class="checkbox-row">
+          <input type="checkbox" id="f-alert" checked>
+          <span>🔔 Bip au début de cette tâche <span class="field-hint-inline">(si les alertes sont activées dans « Filtres »)</span></span>
+        </label>
+      </div>
+
       <div class="field">
         <label class="field-label" for="f-deadline">Échéance (optionnel)</label>
         <input type="date" id="f-deadline">
@@ -1557,6 +1564,7 @@ window.addEventListener('error', function(ev){
     document.getElementById('type-hint').textContent = TYPE_HINTS[type] || '';
     document.getElementById('time-field').style.display = (type === 'timed') ? '' : 'none';
     document.getElementById('duration-field').style.display = (type === 'timed') ? '' : 'none';
+    document.getElementById('alert-field').style.display = (type === 'timed') ? '' : 'none';
     document.getElementById('enddate-field').style.display = (type === 'allday') ? '' : 'none';
     // A reminder is by definition deadline-free, so hide that field for it.
     document.getElementById('f-deadline').closest('.field').style.display = (type === 'reminder') ? 'none' : '';
@@ -1604,6 +1612,7 @@ window.addEventListener('error', function(ev){
       document.getElementById('f-enddate').value = prefill.endDate || '';
       setTaskType(taskType(prefill));
       selectedProgress = (typeof prefill.progress === 'number') ? prefill.progress : null;
+      document.getElementById('f-alert').checked = prefill.alert !== false;
       selectedCategory = prefill.category;
       recurrenceField.style.display = 'none';
       document.getElementById('modal-delete-btn').style.display = '';
@@ -1628,6 +1637,7 @@ window.addEventListener('error', function(ev){
       document.getElementById('f-enddate').value = (prefill && prefill.endDate) || '';
       setTaskType((prefill && prefill.type) || 'timed');
       selectedProgress = (prefill && typeof prefill.progress === 'number') ? prefill.progress : null;
+      document.getElementById('f-alert').checked = !(prefill && prefill.alert === false);
       if(prefill && prefill.category) selectedCategory = prefill.category;
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
@@ -1700,7 +1710,7 @@ window.addEventListener('error', function(ev){
     openModal('create', {
       title: t.title + ' (copie)', category: t.category, date: t.date, time: t.time,
       duration: t.duration, deadline: t.deadline, type: taskType(t), endDate: t.endDate,
-      progress: t.progress
+      progress: t.progress, alert: t.alert
     });
   }
 
@@ -1812,6 +1822,8 @@ window.addEventListener('error', function(ev){
     // A reminder is deliberately free of any deadline.
     var deadline = isReminder ? '' : (document.getElementById('f-deadline').value || '');
     var progress = (typeof selectedProgress === 'number') ? selectedProgress : undefined;
+    // Bip : activé par défaut ; seule la désactivation est enregistrée (alert:false).
+    var alertOn = isTimed ? document.getElementById('f-alert').checked : true;
     if(!title || !date) return;
 
     if(editingId){
@@ -1820,6 +1832,7 @@ window.addEventListener('error', function(ev){
         t.title = title; t.date = date; t.time = time; t.duration = duration;
         t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate;
         t.reminder = isReminder ? true : undefined;
+        if(alertOn) delete t.alert; else t.alert = false;
         if(progress === undefined) delete t.progress; else t.progress = progress;
 
         // Adding dates while editing extends the series. If this task wasn't
@@ -1835,6 +1848,7 @@ window.addEventListener('error', function(ev){
               id: uid(), title:title, category:selectedCategory, date:d, time:time,
               duration:duration, deadline:deadline, endDate: isAllDay ? d : '',
               reminder: isReminder ? true : undefined,
+              alert: alertOn ? undefined : false,
               progress: progress,
               done:false, recurrenceId:t.recurrenceId, recurrenceLabel:t.recurrenceLabel
             });
@@ -1849,7 +1863,7 @@ window.addEventListener('error', function(ev){
 
     var recType = document.getElementById('f-recurrence').value;
     if(recType === 'none'){
-      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, reminder: isReminder ? true : undefined, progress: progress, done:false });
+      tasks.push({ id: uid(), title:title, category:selectedCategory, date:date, time:time, duration:duration, deadline:deadline, endDate:endDate, reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, progress: progress, done:false });
     } else {
       var endType = document.querySelector('input[name=rec-end]:checked').value;
       var rec = {
@@ -1864,7 +1878,7 @@ window.addEventListener('error', function(ev){
       var recurrenceId = uid();
       var label = recurrenceLabelText(rec);
       dates.forEach(function(d){
-        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', reminder: isReminder ? true : undefined, progress: progress, done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
+        tasks.push({ id: uid(), title:title, category:selectedCategory, date:d, time:time, duration:duration, deadline:deadline, endDate: isAllDay ? d : '', reminder: isReminder ? true : undefined, alert: alertOn ? undefined : false, progress: progress, done:false, recurrenceId:recurrenceId, recurrenceLabel:label });
       });
     }
     saveTasks();
@@ -2110,293 +2124,4 @@ window.addEventListener('error', function(ev){
           inner += '<div class="now-line" style="top:' + nowTop + 'px"></div>';
         }
       }
-      html += '<div class="day-track' + (isToday?' is-today':'') + '" style="height:' + trackHeight + 'px" data-date="' + ds + '">' + inner + '</div>';
-    });
-
-    html += '</div></div></div></div>';
-    calendarBody.innerHTML = html;
-
-    calendarBody.querySelectorAll('.day-track').forEach(function(track){
-      track.addEventListener('click', function(e){
-        if(e.target.closest('.task-block')) return;
-        var rect = track.getBoundingClientRect();
-        var y = e.clientY - rect.top;
-        var pctY = Math.max(0, y / rect.height);
-        var totalMin = (HOUR_END - HOUR_START) * 60;
-        var minutesFromStart = Math.round((pctY * totalMin) / 15) * 15;
-        var hour = HOUR_START + Math.floor(minutesFromStart/60);
-        var minute = minutesFromStart % 60;
-        openModal('create', { date: track.dataset.date, time: pad(hour) + ':' + pad(minute) });
-      });
-    });
-    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
-
-    if(prevScroll){
-      var newGridScroll = calendarBody.querySelector('.grid-scroll');
-      if(newGridScroll){ newGridScroll.scrollTop = prevScroll.top; newGridScroll.scrollLeft = prevScroll.left; }
-    }
-  }
-
-  function renderMonth(ref){
-    var year = ref.getFullYear(), month = ref.getMonth();
-    var firstOfMonth = new Date(year, month, 1);
-    var gridStart = getWeekStart(firstOfMonth);
-    var today = new Date();
-    var weekdayNames = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-
-    var html = '<div class="month-grid">';
-    weekdayNames.forEach(function(w){ html += '<div class="month-weekday">' + w + '</div>'; });
-
-    for(var i=0;i<42;i++){
-      var d = addDays(gridStart, i);
-      var ds = toDateStr(d);
-      var muted = d.getMonth() !== month;
-      var isToday = sameDay(d, today);
-      var dayTasks = tasksForDate(ds).sort(function(a,b){
-        var am = a.time ? timeToMinutes(a.time) : -1, bm = b.time ? timeToMinutes(b.time) : -1;
-        return am - bm;
-      });
-      var deadlineTasks = deadlineMarkersForDate(ds);
-
-      html += '<div class="month-cell' + (muted?' muted':'') + '" data-date="' + ds + '">';
-      html += '<span class="month-daynum' + (isToday?' is-today':'') + '" data-goto="' + ds + '">' + d.getDate() + '</span>';
-      var shown = dayTasks.slice(0,2);
-      shown.forEach(function(t){
-        var cat = getCategory(t.category);
-        var isReminder = taskType(t) === 'reminder';
-        var prefix = isReminder ? '🚩 ' : (t.time ? (t.time + ' ') : '');
-        var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
-        html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
-      });
-      deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
-        var cat = getCategory(t.category);
-        html += '<div class="month-chip is-deadline" style="--cat:' + cat.color + '" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</div>';
-      });
-      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0,2-shown.length));
-      if(extra > 0){ html += '<div class="month-more">+' + extra + ' de plus</div>'; }
-      html += '</div>';
-    }
-    html += '</div>';
-    calendarBody.innerHTML = html;
-
-    calendarBody.querySelectorAll('.month-daynum').forEach(function(el){
-      el.addEventListener('click', function(ev){
-        ev.stopPropagation();
-        currentDate = parseDateStr(el.dataset.goto);
-        calendarView = 'day';
-        setActiveViewButton();
-        renderCalendar();
-      });
-    });
-    calendarBody.querySelectorAll('.month-cell').forEach(function(cell){
-      cell.addEventListener('click', function(e){
-        if(e.target.closest('[data-open]') || e.target.closest('.month-daynum')) return;
-        openModal('create', { date: cell.dataset.date });
-      });
-    });
-    calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
-  }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
-  }
-
-  /** Wires a [data-open] element (task block, month chip, all-day chip) so
-      a single click opens it for editing, while a double-click instead
-      toggles it done/not-done right there in the calendar - no need to
-      open the task first. A short timer tells the two apart: a click
-      waits briefly before opening the modal, and is cancelled if a second
-      click (dblclick) arrives in that window. */
-  function wireOpenElement(el){
-    var pendingClick = null;
-    el.addEventListener('click', function(ev){
-      ev.stopPropagation();
-      if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
-      pendingClick = setTimeout(function(){
-        pendingClick = null;
-        var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-        if(t) openModal('edit', t);
-      }, 260);
-    });
-    el.addEventListener('dblclick', function(ev){
-      ev.stopPropagation();
-      if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
-      var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-      if(t){ t.done = !t.done; saveTasks(); renderAll(); }
-    });
-  }
-
-  /* ---------------- toolbar controls ---------------- */
-  document.getElementById('prev-btn').addEventListener('click', function(){ step(-1); });
-  document.getElementById('next-btn').addEventListener('click', function(){ step(1); });
-  document.getElementById('today-btn').addEventListener('click', function(){ currentDate = new Date(); currentDate.setHours(0,0,0,0); renderCalendar(); });
-  function step(dir){
-    if(calendarView === 'day') currentDate = addDays(currentDate, dir);
-    else if(calendarView === 'week') currentDate = addDays(currentDate, dir*7);
-    else currentDate = addMonths(currentDate, dir);
-    renderCalendar();
-  }
-  function setActiveViewButton(){
-    document.querySelectorAll('#view-switch button').forEach(function(b){ b.classList.toggle('active', b.dataset.view === calendarView); });
-  }
-  document.querySelectorAll('#view-switch button').forEach(function(btn){
-    btn.addEventListener('click', function(){ calendarView = btn.dataset.view; setActiveViewButton(); renderCalendar(); });
-  });
-
-  document.getElementById('show-completed').addEventListener('change', function(e){ filters.showCompleted = e.target.checked; renderAll(); });
-
-  /* ---------------- notifications (sound + vibration) toggle ---------------- */
-  var NOTIF_KEY = 'agenda_notif_enabled';
-  var TASK_CHANGE_CHANNEL = 'agenda-task-changes';
-  var notifCheckbox = document.getElementById('notif-enabled');
-  notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
-
-  function nativeLocalNotifications(){
-    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
-  }
-
-  // A dedicated channel with a short custom beep + vibration, so the alert
-  // reads as a discreet "task change" cue rather than a generic, possibly
-  // loud system notification sound. Channel settings are fixed by Android
-  // after first creation, so this only needs to run once.
-  function ensureTaskChangeChannel(nativeLN){
-    try{
-      nativeLN.createChannel({
-        id: TASK_CHANGE_CHANNEL,
-        name: 'Changement de tâche',
-        description: 'Bip discret et vibration au démarrage d\u2019une tâche.',
-        sound: 'beep.wav',
-        vibration: true,
-        importance: 3
-      });
-    }catch(e){}
-  }
-
-  notifCheckbox.addEventListener('change', function(e){
-    if(!e.target.checked){ localStorage.setItem(NOTIF_KEY, '0'); return; }
-
-    var nativeLN = nativeLocalNotifications();
-    if(nativeLN){
-      // Real Android app: use a dedicated channel (short beep + vibration)
-      // rather than the device's generic, possibly loud default sound.
-      nativeLN.requestPermissions().then(function(res){
-        if(res && res.display === 'granted'){
-          ensureTaskChangeChannel(nativeLN);
-          localStorage.setItem(NOTIF_KEY, '1');
-        } else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
-      });
-    } else if('Notification' in window){
-      // Plain browser fallback (only relevant if this page is opened
-      // directly in a web browser rather than the packaged app).
-      Notification.requestPermission().then(function(perm){
-        if(perm === 'granted'){ localStorage.setItem(NOTIF_KEY, '1'); }
-        else { e.target.checked = false; localStorage.setItem(NOTIF_KEY, '0'); }
-      });
-    } else {
-      alert('Les notifications ne sont pas prises en charge ici.');
-      e.target.checked = false;
-    }
-  });
-
-  function notificationsEnabled(){
-    if(localStorage.getItem(NOTIF_KEY) !== '1') return false;
-    return !!nativeLocalNotifications() || (('Notification' in window) && Notification.permission === 'granted');
-  }
-
-  function fireTaskStartNotification(t){
-    var cat = getCategory(t.category);
-    var body = cat.label + ' · commence maintenant (' + formatDuration(t.duration) + ')';
-    var nativeLN = nativeLocalNotifications();
-    if(nativeLN){
-      nativeLN.schedule({ notifications: [{
-        id: Math.floor(Math.random() * 2147483647),
-        title: '▶ ' + t.title,
-        body: body,
-        channelId: TASK_CHANGE_CHANNEL,
-        schedule: { at: new Date(Date.now() + 300) }
-      }] }).catch(function(){});
-    } else if('Notification' in window && Notification.permission === 'granted'){
-      try{ new Notification('▶ ' + t.title, { body: body, tag: t.id }); }catch(e){}
-    }
-  }
-
-  /* ---------------- live clock: refreshes the now-line, progress bars, and fires start-of-task alerts ---------------- */
-  var notifiedThisSession = {};
-  function liveTick(){
-    if(notificationsEnabled()){
-      var nm = nowMinutes(), ds = todayStr();
-      tasks.forEach(function(t){
-        if(!t.time || t.date !== ds || t.done) return;
-        var s = timeToMinutes(t.time);
-        if(nm === s && !notifiedThisSession[t.id]){
-          notifiedThisSession[t.id] = true;
-          fireTaskStartNotification(t);
-        }
-      });
-    }
-    renderAll();
-  }
-  setInterval(liveTick, 60000);
-
-  var filtersToggle = document.getElementById('filters-toggle');
-  var filtersPopover = document.getElementById('filters-popover');
-  filtersToggle.addEventListener('click', function(e){
-    e.stopPropagation();
-    var open = filtersPopover.classList.toggle('is-open');
-    filtersToggle.classList.toggle('is-open', open);
-  });
-  document.addEventListener('click', function(e){
-    if(!filtersPopover.contains(e.target) && e.target !== filtersToggle){
-      filtersPopover.classList.remove('is-open');
-      filtersToggle.classList.remove('is-open');
-    }
-  });
-
-  /* ---------------- mobile panel switch ---------------- */
-  function showPanel(name){
-    document.getElementById('panel-calendar').classList.toggle('hide-mobile', name !== 'calendar');
-    document.getElementById('panel-list').classList.toggle('hide-mobile', name !== 'list');
-    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left');
-    document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel === name); });
-  }
-  document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
-    btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
-  });
-
-  /* ---------------- init ---------------- */
-  function renderAll(){ renderList(); renderCalendar(); }
-
-  function applyStartupParams(){
-    try{
-      var params = new URLSearchParams(window.location.search);
-      var view = params.get('view');
-      var isMobile = window.innerWidth <= 980;
-      if(view === 'day' || view === 'week' || view === 'month'){
-        calendarView = view;
-        currentDate = new Date(); currentDate.setHours(0,0,0,0);
-        if(isMobile) showPanel('calendar');
-      } else if(view === 'list'){
-        if(isMobile) showPanel('list');
-      } else if(isMobile){
-        showPanel('calendar');
-      }
-      setActiveViewButton();
-    }catch(e){ if (window.innerWidth <= 980) showPanel('calendar'); }
-  }
-
-  function safeInit(name, fn){
-    try{ fn(); }catch(err){ if(window.__showJsError) window.__showJsError(name + ' : ' + (err && err.message ? err.message : err)); }
-  }
-  safeInit('catégories (sélecteur)', buildCategorySelect);
-  safeInit('catégories (filtres)', buildCategoryFilters);
-  safeInit('jours', buildWeekdaySelect);
-  safeInit('catégories (réglages)', renderCategoryManager);
-  safeInit('groupes (réglages)', renderGroupManager);
-  safeInit('onglets', applyStartupParams);
-  safeInit('affichage', renderAll);
-  safeInit('widget', syncTasksToWidget);
-
-})();
-</script>
-</body>
-</html>
+      html += '<div class="day-track' + (i
