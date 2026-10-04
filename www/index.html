@@ -2320,7 +2320,7 @@ window.addEventListener('error', function(ev){
 
   /* ---------------- notifications (sound + vibration) toggle ---------------- */
   var NOTIF_KEY = 'agenda_notif_enabled';
-  var TASK_CHANGE_CHANNEL = 'agenda-task-changes-v3'; // nouvel identifiant : Android fige les réglages d'un canal existant
+  var TASK_CHANGE_CHANNEL = 'agenda-bip-v4'; // nouvel identifiant : Android fige les réglages d'un canal existant
   var notifCheckbox = document.getElementById('notif-enabled');
   notifCheckbox.checked = localStorage.getItem(NOTIF_KEY) === '1';
 
@@ -2336,6 +2336,7 @@ window.addEventListener('error', function(ev){
     // Supprime les anciens canaux (réglages figés par Android) avant d'utiliser le nouveau.
     try{ nativeLN.deleteChannel({ id: 'agenda-task-changes' }); }catch(e){}
     try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v2' }); }catch(e){}
+    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v3' }); }catch(e){}
     try{
       nativeLN.createChannel({
         id: TASK_CHANGE_CHANNEL,
@@ -2474,6 +2475,12 @@ window.addEventListener('error', function(ev){
     if(!ln){ alert('Le test fonctionne uniquement dans l\u2019appli Android.'); return; }
     if(localStorage.getItem(NOTIF_KEY) !== '1'){ alert('Activez d\u2019abord « Alertes sonores à l\u2019heure de la tâche ».'); return; }
     ensureTaskChangeChannel(ln);
+    if(ln.listChannels){
+      ln.listChannels().then(function(r){
+        var ids = (r && r.channels ? r.channels : []).map(function(c){ return c.id; });
+        alert('Canaux détectés : ' + (ids.join(', ') || 'aucun'));
+      }).catch(function(err){ alert('Liste des canaux impossible : ' + String(err)); });
+    }
     ln.schedule({ notifications: [{
       id: 2000000001,
       title: '🔔 Test du bip',
