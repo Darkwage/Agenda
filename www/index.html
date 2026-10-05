@@ -625,6 +625,29 @@
        alone. min-width:0 overrides that default grid/flex-item behavior. */
     .calendar-panel, #calendar-body, .time-grid-wrap, .grid-scroll{ min-width:0; }
   }
+
+  /* ---------------- Planificateur ---------------- */
+  .pl-item{ border:1px solid var(--line-soft); background:var(--paper); border-radius:var(--radius-m); padding:10px; margin-bottom:10px; }
+  .pl-item-top{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .pl-del{ width:28px; height:28px; flex:none; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-size:13px; }
+  .pl-del:hover{ border-color:var(--danger); color:var(--danger); }
+  .pl-sels{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .pl-sel span{ display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-bottom:3px; }
+  .pl-sels select.select-input{ width:100%; padding:7px 6px; font-size:12.5px; }
+  .pl-avail-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .pl-avail-row .checkbox-row{ width:104px; flex:none; align-items:center; }
+  .pl-avail-row input[type=time]{ flex:1; min-width:0; }
+  .pl-color-row{ display:flex; align-items:center; gap:10px; }
+  .pl-day-head{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin:12px 0 4px; }
+  .pl-block{ display:flex; gap:10px; padding:6px 10px; border-left:3px solid var(--pl-color, var(--accent)); background:var(--paper); border-radius:var(--radius-s); margin-bottom:5px; font-size:13px; }
+  .pl-block .t{ font-family:var(--font-mono); color:var(--ink-soft); flex:none; }
+  .pl-note{ border-radius:var(--radius-s); padding:9px 12px; font-size:12.5px; margin:0 0 10px; line-height:1.45; }
+  .pl-note.ok{ background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent-dark); }
+  .pl-note.warn{ background:#FBEDED; border:1px solid var(--danger); color:var(--danger); }
+  .pl-batch{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; padding:7px 0; border-top:1px solid var(--line-soft); color:var(--ink-soft); }
+  .pl-error{ color:var(--danger); font-size:12.5px; margin:0 0 8px; }
+  .pl-actions{ display:flex; gap:8px; margin-top:12px; }
+  .pl-actions .btn-primary{ flex:1; }
 </style>
 </head>
 <body>
@@ -649,6 +672,15 @@
       <button type="button" class="btn-primary btn-add-task btn-add-task-desktop" id="open-add-btn" style="margin-bottom:16px;">
         <span>＋</span> Nouvelle tâche
       </button>
+
+      <section class="card">
+        <details class="collapsible" id="planner-details" open>
+          <summary>Planificateur <span class="chev">▸</span></summary>
+          <div class="field-hint" style="margin-bottom:10px;">Listez des tâches avec leur difficulté, leur rapidité et leur importance, indiquez une échéance : l'appli les place dans vos créneaux libres, les plus prioritaires d'abord.</div>
+          <button type="button" class="btn-primary" id="planner-open-btn">⚡ Planifier des tâches</button>
+          <div id="planner-batches" style="margin-top:12px;"></div>
+        </details>
+      </section>
 
       <section class="card">
         <details class="collapsible" id="cat-details">
@@ -881,6 +913,58 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="planner-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="planner-title">
+    <div class="modal-head">
+      <h2 id="planner-title">Planificateur</h2>
+      <button type="button" class="modal-close" id="planner-close" aria-label="Fermer">✕</button>
+    </div>
+
+    <div id="planner-step-form">
+      <div class="field">
+        <label class="field-label" for="pl-deadline">Échéance maximale pour l'ensemble des tâches</label>
+        <input type="date" id="pl-deadline">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Tâches à planifier</label>
+        <div id="pl-items"></div>
+        <button type="button" class="btn-ghost" id="pl-add-item">＋ Ajouter une tâche</button>
+        <div class="field-hint">Rapidité : Rapide ≈ 30 min, Moyenne ≈ 1 h 30, Longue ≈ 3 h. Une tâche longue peut être découpée en plusieurs blocs.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Mes disponibilités (semaine type)</label>
+        <div id="pl-avail"></div>
+        <div class="field-hint">Les tâches et rendez-vous déjà présents dans l'agenda (avec leur temps de trajet) sont évités automatiquement.</div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="pl-maxday">Max. de tâches par jour (h)</label>
+          <input type="number" id="pl-maxday" min="0.5" step="0.5" value="4">
+        </div>
+        <div class="field">
+          <label class="field-label" for="pl-color">Couleur des tâches planifiées</label>
+          <div class="pl-color-row"><input type="color" id="pl-color" value="#0E9AA7"><span class="field-hint" style="margin:0;">Réservée au planificateur</span></div>
+        </div>
+      </div>
+
+      <div class="pl-error" id="pl-error"></div>
+      <button type="button" class="btn-primary" id="pl-generate">Générer le planning</button>
+    </div>
+
+    <div id="planner-step-preview" style="display:none;">
+      <div class="pl-note" id="pl-summary"></div>
+      <div id="pl-preview-list"></div>
+      <div class="pl-actions">
+        <button type="button" class="btn-ghost" id="pl-back">‹ Modifier</button>
+        <button type="button" class="btn-primary" id="pl-confirm">Ajouter au calendrier</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Capacitor bridge + plugin JS glue. Without these, window.Capacitor.Plugins
      stays empty in an unbundled app like this one, since each plugin's
      registerPlugin() call needs its own script to actually run. -->
@@ -938,6 +1022,13 @@ window.addEventListener('error', function(ev){
   var GROUPS_KEY = 'agenda_groups_v1';
   var TASKS_KEY = 'agenda_planner_tasks_v1';
   var HOUR_START = 6, HOUR_END = 22; // grid covers 06:00–22:00
+  // Planificateur : catégorie « virtuelle » (couleur propre, non attribuable aux catégories)
+  var PLANNER_KEY = '_planner';
+  var PLANNER_CFG_KEY = 'agenda_planner_cfg_v1';
+  var PLANNER_DEFAULT_COLOR = '#0E9AA7';
+  var PLANNER_SPEED_MIN = { 1:30, 2:90, 3:180 }; // Rapide / Moyenne / Longue (minutes)
+  var PLANNER_MIN_CHUNK = 30;
+  var plannerCfg = loadPlannerCfg();
 
   var CATEGORIES = loadCategories();
   var GROUPS = loadGroups();
@@ -1114,6 +1205,7 @@ window.addEventListener('error', function(ev){
     return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || uid();
   }
   function getCategory(key){
+    if(key === PLANNER_KEY) return { key:PLANNER_KEY, label:'Planificateur', color: plannerCfg.color };
     for(var i=0;i<CATEGORIES.length;i++){ if(CATEGORIES[i].key === key) return CATEGORIES[i]; }
     return FALLBACK_CATEGORY;
   }
@@ -1508,10 +1600,11 @@ window.addEventListener('error', function(ev){
   function buildCategorySelect(){
     var wrap = document.getElementById('category-select');
     wrap.innerHTML = '';
-    if(!CATEGORIES.some(function(c){ return c.key === selectedCategory; })){
+    var isPlannerSel = (selectedCategory === PLANNER_KEY);
+    if(!isPlannerSel && !CATEGORIES.some(function(c){ return c.key === selectedCategory; })){
       selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : '_none';
     }
-    CATEGORIES.forEach(function(c){
+    (isPlannerSel ? [getCategory(PLANNER_KEY)].concat(CATEGORIES) : CATEGORIES).forEach(function(c){
       var chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'chip' + (c.key === selectedCategory ? ' is-active' : '');
@@ -1527,7 +1620,7 @@ window.addEventListener('error', function(ev){
   function buildCategoryFilters(){
     var wrap = document.getElementById('category-filters');
     wrap.innerHTML = '';
-    CATEGORIES.forEach(function(c){
+    CATEGORIES.concat([getCategory(PLANNER_KEY)]).forEach(function(c){
       if(!(c.key in filters.categories)) filters.categories[c.key] = true;
       var chip = document.createElement('button');
       chip.type = 'button';
@@ -1676,6 +1769,7 @@ window.addEventListener('error', function(ev){
       document.getElementById('f-travel-before').value = (prefill && prefill.travelBefore) || 0;
       document.getElementById('f-travel-after').value = (prefill && prefill.travelAfter) || 0;
       if(prefill && prefill.category) selectedCategory = prefill.category;
+      else if(selectedCategory === PLANNER_KEY) selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : '_none';
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
       document.getElementById('f-recurrence').value = 'none';
@@ -2535,8 +2629,364 @@ window.addEventListener('error', function(ev){
     btn.addEventListener('click', function(){ showPanel(btn.dataset.panel); });
   });
 
+  /* ================================================================
+     PLANIFICATEUR (priorisation automatique des tâches)
+  ================================================================= */
+  /*PLANNER-CORE-START*/
+  function plannerDayBusy(taskList, dateStr){
+    var busy = [];
+    taskList.forEach(function(t){
+      if(t.done || t.reminder || !t.time || t.date !== dateStr) return;
+      var s = timeToMinutes(t.time);
+      if(s === null || isNaN(s)) return;
+      busy.push([s - (t.travelBefore || 0), s + (t.duration || 30) + (t.travelAfter || 0)]);
+    });
+    return busy;
+  }
+  function plannerSubtract(slot, busy){
+    var free = [slot];
+    busy.forEach(function(b){
+      var next = [];
+      free.forEach(function(f){
+        if(b[1] <= f[0] || b[0] >= f[1]){ next.push(f); return; }
+        if(b[0] > f[0]) next.push([f[0], b[0]]);
+        if(b[1] < f[1]) next.push([b[1], f[1]]);
+      });
+      free = next;
+    });
+    return free;
+  }
+  // Créneaux libres = disponibilités déclarées − tâches/rendez-vous déjà posés
+  function plannerFreeSlots(cfg){
+    var slots = [];
+    var d = parseDateStr(cfg.startDate), last = parseDateStr(cfg.deadline), guard = 0;
+    while(d <= last && guard++ < 400){
+      var ds = toDateStr(d), a = cfg.avail[d.getDay()];
+      if(a && a.on){
+        var s = timeToMinutes(a.start), e = timeToMinutes(a.end);
+        if(s !== null && e !== null){
+          if(ds === cfg.startDate && cfg.nowMinutes != null) s = Math.max(s, Math.ceil(cfg.nowMinutes / 15) * 15);
+          if(e - s >= PLANNER_MIN_CHUNK){
+            plannerSubtract([s, e], plannerDayBusy(cfg.tasks, ds)).forEach(function(f){
+              if(f[1] - f[0] >= PLANNER_MIN_CHUNK) slots.push({ date:ds, start:f[0], end:f[1] });
+            });
+          }
+        }
+      }
+      d = addDays(d, 1);
+    }
+    return slots;
+  }
+  // items : [{title, difficulty 1-3, speed 1-3, importance 1-3}]
+  function plannerBuildPlan(items, cfg){
+    var slots = plannerFreeSlots(cfg);
+    var capMin = cfg.maxPerDay > 0 ? cfg.maxPerDay : Infinity;
+    var load = {};
+    var order = items.map(function(it, i){
+      return { idx:i, item:it, minutes: PLANNER_SPEED_MIN[it.speed] || 90, score: it.importance * 3 + it.difficulty };
+    });
+    // Les plus prioritaires d'abord : importance, puis difficulté, puis durée la plus longue
+    order.sort(function(a, b){ return (b.score - a.score) || (b.minutes - a.minutes) || (a.idx - b.idx); });
+
+    var chunksByItem = {};
+    function tryPlace(o, ignoreCap){
+      var work = slots.map(function(s){ return { date:s.date, start:s.start, end:s.end }; });
+      var wl = {}; for(var k in load) wl[k] = load[k];
+      var remaining = o.minutes, chunks = [], i, j;
+      function room(s){
+        var r = s.end - s.start;
+        return ignoreCap ? r : Math.min(r, capMin - (wl[s.date] || 0));
+      }
+      function take(s, m){
+        chunks.push({ date:s.date, start:s.start, duration:m });
+        s.start += m; wl[s.date] = (wl[s.date] || 0) + m; remaining -= m;
+      }
+      // 1) la tâche entière dans le premier créneau où elle tient
+      for(i = 0; i < work.length; i++){
+        if(room(work[i]) >= remaining){ take(work[i], remaining); break; }
+      }
+      // 2) sinon, découpage en plusieurs blocs (30 min minimum chacun)
+      if(remaining > 0){
+        for(j = 0; j < work.length && remaining > 0; j++){
+          var use = Math.min(room(work[j]), remaining);
+          if(remaining - use > 0 && remaining - use < PLANNER_MIN_CHUNK) use = remaining - PLANNER_MIN_CHUNK;
+          if(use >= PLANNER_MIN_CHUNK) take(work[j], use);
+        }
+      }
+      if(remaining > 0) return false;
+      slots = work; load = wl; chunksByItem[o.idx] = chunks;
+      return true;
+    }
+    // Passe 1 : en respectant le plafond quotidien ; passe 2 : sans plafond pour ce qui n'a pas trouvé de place
+    var failed = [], unplaced = [];
+    order.forEach(function(o){ if(!tryPlace(o, false)) failed.push(o); });
+    failed.forEach(function(o){ if(!tryPlace(o, true)) unplaced.push(o); });
+
+    var blocks = [], needed = 0, placed = 0;
+    order.forEach(function(o){ needed += o.minutes; });
+    Object.keys(chunksByItem).forEach(function(k){
+      var chunks = chunksByItem[k].slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : a.start - b.start; });
+      chunks.forEach(function(c, n){
+        blocks.push({ idx:+k, title:items[k].title, date:c.date, start:c.start, duration:c.duration, part:n + 1, parts:chunks.length });
+        placed += c.duration;
+      });
+    });
+    blocks.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : a.start - b.start; });
+    return {
+      blocks: blocks,
+      unplaced: unplaced.map(function(o){ return { title:o.item.title, minutes:o.minutes }; }),
+      neededMin: needed, placedMin: placed, missingMin: needed - placed
+    };
+  }
+  /*PLANNER-CORE-END*/
+
+  /* ---- Planificateur : réglages mémorisés (disponibilités, plafond/jour, couleur) ---- */
+  function plannerDefaultAvail(){
+    var a = {};
+    for(var d = 0; d < 7; d++) a[d] = { on: (d >= 1 && d <= 5), start:'09:00', end:'18:00' };
+    return a;
+  }
+  function loadPlannerCfg(){
+    var cfg = { avail: plannerDefaultAvail(), maxPerDay: 240, color: PLANNER_DEFAULT_COLOR };
+    try{
+      var raw = JSON.parse(localStorage.getItem(PLANNER_CFG_KEY) || 'null');
+      if(raw && typeof raw === 'object'){
+        if(raw.avail && typeof raw.avail === 'object'){
+          for(var d = 0; d < 7; d++){
+            var a = raw.avail[d];
+            if(a && typeof a === 'object'){
+              cfg.avail[d] = {
+                on: !!a.on,
+                start: /^\d{2}:\d{2}$/.test(a.start) ? a.start : '09:00',
+                end: /^\d{2}:\d{2}$/.test(a.end) ? a.end : '18:00'
+              };
+            }
+          }
+        }
+        if(typeof raw.maxPerDay === 'number' && raw.maxPerDay >= 0) cfg.maxPerDay = raw.maxPerDay;
+        if(typeof raw.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.color)) cfg.color = raw.color;
+      }
+    }catch(e){}
+    return cfg;
+  }
+  function savePlannerCfg(){ try{ localStorage.setItem(PLANNER_CFG_KEY, JSON.stringify(plannerCfg)); }catch(e){} }
+
+  /* ---- Planificateur : interface ---- */
+  var PL_DAY_NAMES = { 1:'Lundi', 2:'Mardi', 3:'Mercredi', 4:'Jeudi', 5:'Vendredi', 6:'Samedi', 0:'Dimanche' };
+  var PL_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  var plOverlay = document.getElementById('planner-overlay');
+  var plItems = [];
+  var plPlan = null;
+
+  function plNewItem(){ return { title:'', difficulty:2, speed:2, importance:2 }; }
+  function plMinToTime(m){ return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+
+  function plRenderItems(){
+    var wrap = document.getElementById('pl-items');
+    wrap.innerHTML = '';
+    var defs = [
+      ['difficulty', 'Difficulté', ['Facile', 'Moyenne', 'Difficile']],
+      ['speed', 'Rapidité', ['Rapide', 'Moyenne', 'Longue']],
+      ['importance', 'Importance', ['Faible', 'Normale', 'Élevée']]
+    ];
+    plItems.forEach(function(it, i){
+      var row = document.createElement('div'); row.className = 'pl-item';
+      var top = document.createElement('div'); top.className = 'pl-item-top';
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.maxLength = 80; inp.placeholder = 'Ex. Préparer la présentation'; inp.value = it.title;
+      inp.addEventListener('input', function(){ it.title = inp.value; });
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'pl-del'; del.setAttribute('aria-label', 'Retirer cette tâche'); del.textContent = '✕';
+      del.addEventListener('click', function(){
+        plItems.splice(i, 1);
+        if(!plItems.length) plItems.push(plNewItem());
+        plRenderItems();
+      });
+      top.appendChild(inp); top.appendChild(del); row.appendChild(top);
+      var sels = document.createElement('div'); sels.className = 'pl-sels';
+      defs.forEach(function(def){
+        var lab = document.createElement('label'); lab.className = 'pl-sel';
+        var sp = document.createElement('span'); sp.textContent = def[1];
+        var sel = document.createElement('select'); sel.className = 'select-input';
+        def[2].forEach(function(txt, k){
+          var o = document.createElement('option'); o.value = String(k + 1); o.textContent = txt; sel.appendChild(o);
+        });
+        sel.value = String(it[def[0]]);
+        sel.addEventListener('change', function(){ it[def[0]] = parseInt(sel.value, 10); });
+        lab.appendChild(sp); lab.appendChild(sel); sels.appendChild(lab);
+      });
+      row.appendChild(sels);
+      wrap.appendChild(row);
+    });
+  }
+
+  function plRenderAvail(){
+    var wrap = document.getElementById('pl-avail');
+    wrap.innerHTML = '';
+    PL_DAY_ORDER.forEach(function(d){
+      var a = plannerCfg.avail[d];
+      var row = document.createElement('div'); row.className = 'pl-avail-row';
+      var lab = document.createElement('label'); lab.className = 'checkbox-row';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!a.on;
+      var nm = document.createElement('span'); nm.textContent = PL_DAY_NAMES[d];
+      lab.appendChild(cb); lab.appendChild(nm);
+      var st = document.createElement('input'); st.type = 'time'; st.value = a.start; st.disabled = !a.on;
+      var en = document.createElement('input'); en.type = 'time'; en.value = a.end; en.disabled = !a.on;
+      cb.addEventListener('change', function(){ a.on = cb.checked; st.disabled = en.disabled = !cb.checked; });
+      st.addEventListener('change', function(){ if(st.value) a.start = st.value; });
+      en.addEventListener('change', function(){ if(en.value) a.end = en.value; });
+      row.appendChild(lab); row.appendChild(st); row.appendChild(en);
+      wrap.appendChild(row);
+    });
+  }
+
+  function plShowStep(name){
+    document.getElementById('planner-step-form').style.display = (name === 'form') ? '' : 'none';
+    document.getElementById('planner-step-preview').style.display = (name === 'preview') ? '' : 'none';
+  }
+  function openPlanner(){
+    if(!plItems.length) plItems.push(plNewItem());
+    var dl = document.getElementById('pl-deadline');
+    dl.min = todayStr();
+    if(!dl.value || dl.value < todayStr()) dl.value = toDateStr(addDays(new Date(), 14));
+    document.getElementById('pl-maxday').value = plannerCfg.maxPerDay > 0 ? (plannerCfg.maxPerDay / 60) : '';
+    document.getElementById('pl-color').value = plannerCfg.color;
+    document.getElementById('pl-error').textContent = '';
+    plRenderItems();
+    plRenderAvail();
+    plShowStep('form');
+    plOverlay.classList.add('is-open');
+  }
+  function closePlanner(){ plOverlay.classList.remove('is-open'); }
+
+  document.getElementById('planner-open-btn').addEventListener('click', openPlanner);
+  document.getElementById('planner-close').addEventListener('click', closePlanner);
+  plOverlay.addEventListener('click', function(e){ if(e.target === plOverlay) closePlanner(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && plOverlay.classList.contains('is-open')) closePlanner(); });
+  document.getElementById('pl-add-item').addEventListener('click', function(){
+    plItems.push(plNewItem());
+    plRenderItems();
+    var inputs = document.querySelectorAll('#pl-items input[type=text]');
+    if(inputs.length) inputs[inputs.length - 1].focus();
+  });
+  document.getElementById('pl-color').addEventListener('change', function(){
+    plannerCfg.color = this.value;
+    savePlannerCfg();
+    buildCategoryFilters();
+    renderAll();
+    syncTasksToWidget();
+  });
+  document.getElementById('pl-back').addEventListener('click', function(){ plShowStep('form'); });
+
+  document.getElementById('pl-generate').addEventListener('click', function(){
+    var err = document.getElementById('pl-error');
+    err.textContent = '';
+    var deadline = document.getElementById('pl-deadline').value;
+    var items = plItems.filter(function(it){ return it.title.trim(); }).map(function(it){
+      return { title: it.title.trim(), difficulty: it.difficulty, speed: it.speed, importance: it.importance };
+    });
+    if(!deadline || deadline < todayStr()){ err.textContent = 'Choisissez une échéance (aujourd\u2019hui ou plus tard).'; return; }
+    if(!items.length){ err.textContent = 'Ajoutez au moins une tâche avec un titre.'; return; }
+    if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; })){ err.textContent = 'Cochez au moins un jour de disponibilité.'; return; }
+    var h = parseFloat(document.getElementById('pl-maxday').value);
+    plannerCfg.maxPerDay = h > 0 ? Math.round(h * 60) : 0;
+    savePlannerCfg();
+    plPlan = plannerBuildPlan(items, {
+      avail: plannerCfg.avail, startDate: todayStr(), nowMinutes: nowMinutes(),
+      deadline: deadline, tasks: tasks, maxPerDay: plannerCfg.maxPerDay
+    });
+    plPlan.deadline = deadline;
+    plShowPreview();
+  });
+
+  function plShowPreview(){
+    var p = plPlan;
+    var sum = document.getElementById('pl-summary');
+    var list = document.getElementById('pl-preview-list');
+    var dlText = fmtDayMonth(parseDateStr(p.deadline));
+    var html = '';
+    if(!p.blocks.length){
+      sum.className = 'pl-note warn';
+      sum.textContent = 'Aucun créneau libre trouvé avant le ' + dlText + '. Élargissez vos disponibilités ou repoussez l\u2019échéance.';
+    } else if(p.missingMin <= 0){
+      sum.className = 'pl-note ok';
+      sum.textContent = 'Tout tient : ' + formatDuration(p.placedMin) + ' de travail planifiées avant le ' + dlText + '.';
+    } else {
+      sum.className = 'pl-note warn';
+      sum.textContent = 'Il manque environ ' + formatDuration(p.missingMin) + ' de temps libre avant le ' + dlText + '. Repoussez l\u2019échéance, élargissez vos disponibilités ou retirez des tâches peu importantes.';
+    }
+    var lastDate = '';
+    p.blocks.forEach(function(b){
+      if(b.date !== lastDate){
+        var d = parseDateStr(b.date);
+        html += '<div class="pl-day-head">' + escapeHtml(fmtShortDay(d) + ' ' + fmtShort(d)) + '</div>';
+        lastDate = b.date;
+      }
+      var title = b.title + (b.parts > 1 ? ' (' + b.part + '/' + b.parts + ')' : '');
+      html += '<div class="pl-block" style="--pl-color:' + plannerCfg.color + ';"><span class="t">' + plMinToTime(b.start) + '–' + plMinToTime(b.start + b.duration) + '</span><span>' + escapeHtml(title) + '</span></div>';
+    });
+    if(p.unplaced.length){
+      html += '<div class="pl-day-head">Non planifiées</div>';
+      p.unplaced.forEach(function(u){
+        html += '<div class="pl-block" style="--pl-color:var(--danger);"><span class="t">' + formatDuration(u.minutes) + '</span><span>' + escapeHtml(u.title) + '</span></div>';
+      });
+    }
+    list.innerHTML = html;
+    document.getElementById('pl-confirm').disabled = !p.blocks.length;
+    plShowStep('preview');
+  }
+
+  document.getElementById('pl-confirm').addEventListener('click', function(){
+    if(!plPlan || !plPlan.blocks.length) return;
+    var batchId = uid(), label = 'Lot du ' + fmtShort(new Date());
+    plPlan.blocks.forEach(function(b){
+      tasks.push({
+        id: uid(), title: b.title + (b.parts > 1 ? ' (' + b.part + '/' + b.parts + ')' : ''),
+        category: PLANNER_KEY, date: b.date, time: plMinToTime(b.start), duration: b.duration,
+        deadline: '', endDate: '', done: false,
+        source: 'planner', plannerBatchId: batchId, plannerBatchLabel: label
+      });
+    });
+    currentDate = parseDateStr(plPlan.blocks[0].date);
+    plItems = [plNewItem()];
+    plPlan = null;
+    saveTasks();
+    closePlanner();
+    buildCategoryFilters();
+    renderAll();
+    if(window.innerWidth <= 980) showPanel('calendar');
+  });
+
+  function renderPlannerBatches(){
+    var wrap = document.getElementById('planner-batches');
+    if(!wrap) return;
+    var map = {}, order = [];
+    tasks.forEach(function(t){
+      if(t.source !== 'planner' || !t.plannerBatchId || t.done) return;
+      var b = map[t.plannerBatchId];
+      if(!b){ b = map[t.plannerBatchId] = { id:t.plannerBatchId, label:t.plannerBatchLabel || 'Lot planifié', count:0, last:'' }; order.push(b); }
+      b.count++;
+      if(t.date > b.last) b.last = t.date;
+    });
+    wrap.innerHTML = '';
+    order.forEach(function(b){
+      var row = document.createElement('div'); row.className = 'pl-batch';
+      var txt = document.createElement('span');
+      txt.textContent = b.label + ' · ' + b.count + ' bloc' + (b.count > 1 ? 's' : '') + ' · jusqu\u2019au ' + fmtShort(parseDateStr(b.last));
+      var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-ghost'; btn.textContent = 'Supprimer';
+      btn.addEventListener('click', function(){
+        if(!confirm('Supprimer les ' + b.count + ' bloc(s) non terminés de ce lot ?')) return;
+        tasks = tasks.filter(function(t){ return !(t.source === 'planner' && t.plannerBatchId === b.id && !t.done); });
+        saveTasks();
+        renderAll();
+      });
+      row.appendChild(txt); row.appendChild(btn);
+      wrap.appendChild(row);
+    });
+  }
+
   /* ---------------- init ---------------- */
-  function renderAll(){ renderList(); renderCalendar(); }
+  function renderAll(){ renderList(); renderCalendar(); renderPlannerBatches(); }
 
   function applyStartupParams(){
     try{
