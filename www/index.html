@@ -971,6 +971,9 @@
 <script src="capacitor-plugins/capacitor-core.js"></script>
 <script src="capacitor-plugins/capacitor-preferences.js"></script>
 <script src="capacitor-plugins/capacitor-local-notifications.js"></script>
+<script src="capacitor-plugins/capacitor-synapse.js"></script>
+<script src="capacitor-plugins/capacitor-filesystem.js"></script>
+<script src="capacitor-plugins/capacitor-share.js"></script>
 <script>
 /* Bandeau de diagnostic : affiche à l'écran toute erreur JavaScript. */
 window.__showJsError = function(msg){
@@ -1534,19 +1537,43 @@ window.addEventListener('error', function(ev){
   /* ================================================================
      EXPORT / IMPORT (backup & migration between devices/apps)
   ================================================================= */
-  document.getElementById('export-btn').addEventListener('click', function(){
+   document.getElementById('export-btn').addEventListener('click', async function(){
     var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES };
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    var json = JSON.stringify(payload, null, 2);
+    var filename = 'agenda-sauvegarde-' + todayStr() + '.json';
+
+    var cap = window.Capacitor;
+    var P = cap && cap.Plugins;
+    var isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
+
+    // Appli Android : le WebView ignore <a download>, on écrit le fichier puis on ouvre la feuille de partage.
+    if(isNative){
+      if(!(P && P.Filesystem && P.Share)){
+        alert('Export impossible : plugins Filesystem/Share absents. Relancez "npx cap sync android" puis reconstruisez l\'APK.');
+        return;
+      }
+      try{
+        await P.Filesystem.writeFile({ path: filename, data: json, directory: 'CACHE', encoding: 'utf8' });
+        var res = await P.Filesystem.getUri({ path: filename, directory: 'CACHE' });
+        await P.Share.share({ title: filename, files: [res.uri], dialogTitle: 'Enregistrer la sauvegarde' });
+      }catch(err){
+        var msg = String((err && err.message) || err);
+        if(msg.toLowerCase().indexOf('cancel') === -1) alert('Export impossible : ' + msg);
+      }
+      return;
+    }
+
+    // Navigateur classique : téléchargement direct
+    var blob = new Blob([json], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'agenda-sauvegarde-' + todayStr() + '.json';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
   });
-
   document.getElementById('import-btn').addEventListener('click', function(){
     document.getElementById('import-file-input').click();
   });
