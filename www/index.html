@@ -581,6 +581,48 @@
   .cp-preview{ width:34px; height:34px; border-radius:8px; border:1px solid var(--line); flex:none; }
   .cp-hex-row input{ flex:1; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.04em; }
 
+  /* ---------- programme de révisions ---------- */
+  .rev-subject{
+    background:var(--paper); border:1px solid var(--line-soft); border-radius:var(--radius-m);
+    padding:12px 12px 12px; margin-bottom:10px;
+  }
+  .rev-subject-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .rev-subject-head input{ flex:1; font-weight:600; }
+  .rev-error, .rev-warning{
+    border:1px solid var(--danger); background:#FBF0F0; color:var(--danger);
+    border-radius:var(--radius-s); padding:9px 12px; margin-bottom:12px; font-size:12.5px; font-weight:500;
+  }
+  .rev-summary{ font-family:var(--font-display); font-weight:600; font-size:16px; margin:0 0 4px; }
+  .rev-summary-sub{ font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; }
+  .rev-note{ font-size:12px; color:var(--ink-soft); background:var(--accent-soft); border-radius:var(--radius-s); padding:8px 12px; margin-bottom:12px; }
+  .rev-preview-scroll{ max-height:46vh; overflow-y:auto; margin-bottom:14px; padding-right:2px; }
+  .rev-session{
+    display:flex; align-items:baseline; gap:10px; padding:7px 10px 7px 12px; margin-bottom:5px;
+    background:var(--paper); border-left:4px solid var(--cat, var(--accent)); border-radius:6px; font-size:13px;
+  }
+  .rev-session .rev-time{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); flex:none; }
+  .rev-session.is-exam{ background:transparent; border-left-style:dashed; font-weight:600; }
+  .rev-actions{ display:flex; gap:8px; }
+
+  /* ---------- onglet Générateurs ---------- */
+  .gen-section{ margin-bottom:16px; }
+  .gen-card{ padding:16px 16px 18px; }
+  .gen-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .gen-icon{
+    width:34px; height:34px; border-radius:50%; background:var(--accent-soft); flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:17px;
+  }
+  .gen-title{ font-family:var(--font-display); font-weight:600; font-size:16px; line-height:1.25; }
+  .gen-desc{ margin:0 0 12px; font-size:12.5px; color:var(--ink-soft); }
+  .view-tabs.mobile-only.has-gen button{ padding:7px 4px; font-size:12px; min-width:0; }
+  @media (max-width: 980px){
+    .sidebar-left.mobile-gen > *:not(.gen-section){ display:none; }
+    .sidebar-left:not(.mobile-gen) .gen-section{ display:none; }
+    .gen-card{ padding:18px; }
+    .gen-title{ font-size:17px; }
+    .gen-desc{ font-size:13.5px; }
+  }
+
   /* responsive */
   @media (max-width: 1180px){
     .layout{ grid-template-columns:240px 1fr 270px; }
@@ -660,9 +702,10 @@
     </div>
   </header>
 
-  <nav class="view-tabs mobile-only">
+  <nav class="view-tabs mobile-only has-gen">
     <button type="button" data-panel="calendar" class="active">Calendrier</button>
     <button type="button" data-panel="list">Liste</button>
+    <button type="button" data-panel="generators">Générateurs</button>
     <button type="button" data-panel="left">Réglages</button>
   </nav>
 
@@ -673,14 +716,22 @@
         <span>＋</span> Nouvelle tâche
       </button>
 
-      <section class="card">
-        <details class="collapsible" id="planner-details" open>
-          <summary>Planificateur <span class="chev">▸</span></summary>
-          <div class="field-hint" style="margin-bottom:10px;">Listez des tâches avec leur difficulté, leur rapidité et leur importance, indiquez une échéance : l'appli les place dans vos créneaux libres, les plus prioritaires d'abord.</div>
-          <button type="button" class="btn-primary" id="planner-open-btn">⚡ Planifier des tâches</button>
+      <div class="gen-section" id="gen-section">
+        <h2 class="section-title">Générateurs</h2>
+
+        <section class="card gen-card">
+          <div class="gen-head"><span class="gen-icon">⚡</span><span class="gen-title">Priorisation automatique</span></div>
+          <p class="gen-desc">Listez vos tâches avec leur difficulté, leur rapidité et leur importance, indiquez une échéance : l'appli les place dans vos créneaux libres, les plus prioritaires d'abord.</p>
+          <button type="button" class="btn-primary" id="planner-open-btn">Planifier des tâches</button>
           <div id="planner-batches" style="margin-top:12px;"></div>
-        </details>
-      </section>
+        </section>
+
+        <section class="card gen-card">
+          <div class="gen-head"><span class="gen-icon">📚</span><span class="gen-title">Programme de révisions</span></div>
+          <p class="gen-desc">Indiquez vos examens, vos matières et votre disponibilité : l'appli construit un programme de révisions, une couleur par matière, dans vos créneaux libres.</p>
+          <button type="button" class="btn-primary" id="open-rev-btn">Créer un programme</button>
+        </section>
+      </div>
 
       <section class="card">
         <details class="collapsible" id="cat-details">
@@ -965,6 +1016,77 @@
   </div>
 </div>
 
+<!-- Programme de révisions -->
+<div class="modal-overlay" id="rev-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rev-title">
+    <div class="modal-head">
+      <h2 id="rev-title">Programme de révisions</h2>
+      <button type="button" class="modal-close" id="rev-close" aria-label="Fermer">✕</button>
+    </div>
+
+    <div id="rev-step-form">
+      <div class="field-hint" style="margin-bottom:14px;">Indiquez vos examens et votre disponibilité : les séances sont placées dans les créneaux encore libres, en tenant compte de vos tâches et rendez-vous.</div>
+
+      <label class="field-label">Matières et examens</label>
+      <div class="field-hint" style="margin:-2px 0 8px;">La pastille de couleur à gauche de chaque matière sera sa couleur dans le calendrier.</div>
+      <div id="rev-subjects"></div>
+      <button type="button" class="btn-ghost" id="rev-add-subject-btn" style="width:100%; margin-bottom:16px;">＋ Ajouter une matière</button>
+
+      <div class="field">
+        <label class="field-label" for="rev-hours">Temps consacré aux révisions</label>
+        <div class="field-row">
+          <div class="field" style="margin-bottom:0;"><input type="number" id="rev-hours" min="0.5" max="16" step="0.5"></div>
+          <div class="field" style="margin-bottom:0;">
+            <select id="rev-mode" class="select-input">
+              <option value="day">heures par jour</option>
+              <option value="week">heures par semaine</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Jours de révision</label>
+        <div class="chip-row" id="rev-weekdays"></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field"><label class="field-label" for="rev-from">Plage horaire, de</label><input type="time" id="rev-from"></div>
+        <div class="field"><label class="field-label" for="rev-to">à</label><input type="time" id="rev-to"></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="rev-session">Durée d’une séance</label>
+          <select id="rev-session" class="select-input">
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">1 h</option>
+            <option value="90">1 h 30</option>
+            <option value="120">2 h</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="checkbox-field"><label class="checkbox-row"><input type="checkbox" id="rev-spread"><span>Étaler les séances jusqu’à l’examen <span class="field-hint-inline">(sinon : au plus tôt)</span></span></label></div>
+      <div class="checkbox-field"><label class="checkbox-row"><input type="checkbox" id="rev-review"><span>Prévoir une séance de rappel juste avant chaque examen</span></label></div>
+      <div class="checkbox-field"><label class="checkbox-row"><input type="checkbox" id="rev-avoid-allday"><span>Éviter les jours occupés par une tâche « journée entière »</span></label></div>
+      <div class="checkbox-field"><label class="checkbox-row"><input type="checkbox" id="rev-add-exams"><span>Ajouter les examens à l’agenda</span></label></div>
+
+      <div class="rev-error" id="rev-error" style="display:none;"></div>
+      <button type="button" class="btn-primary" id="rev-generate-btn" style="margin-top:8px;">Générer le programme</button>
+    </div>
+
+    <div id="rev-step-preview" style="display:none;">
+      <div id="rev-preview"></div>
+      <div class="rev-actions">
+        <button type="button" class="btn-ghost" id="rev-back-btn">Modifier</button>
+        <button type="button" class="btn-primary" id="rev-commit-btn" style="flex:1; width:auto;">Ajouter à l’agenda</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Capacitor bridge + plugin JS glue. Without these, window.Capacitor.Plugins
      stays empty in an unbundled app like this one, since each plugin's
      registerPlugin() call needs its own script to actually run. -->
@@ -1032,6 +1154,35 @@ window.addEventListener('error', function(ev){
   var PLANNER_SPEED_MIN = { 1:30, 2:90, 3:180 }; // Rapide / Moyenne / Longue (minutes)
   var PLANNER_MIN_CHUNK = 30;
   var plannerCfg = loadPlannerCfg();
+  // Programme de révisions : une catégorie « virtuelle » par matière (couleur propre à la matière)
+  var REV_CATS_KEY = 'agenda_revision_cats_v1';
+  var REV_PREFIX = '_rev_';
+  var revCats = loadRevCats();
+  function loadRevCats(){
+    var out = {};
+    try{
+      var raw = JSON.parse(localStorage.getItem(REV_CATS_KEY) || 'null');
+      if(raw && typeof raw === 'object'){
+        Object.keys(raw).forEach(function(k){
+          var c = raw[k];
+          if(k.indexOf(REV_PREFIX) === 0 && c && typeof c.label === 'string' && /^#[0-9a-fA-F]{6}$/.test(c.color)) out[k] = { label:c.label, color:c.color };
+        });
+      }
+    }catch(e){}
+    return out;
+  }
+  function saveRevCats(){ try{ localStorage.setItem(REV_CATS_KEY, JSON.stringify(revCats)); }catch(e){} }
+  function revCatKey(name){
+    var slug = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if(!slug){ var h = 0, n = String(name || ''); for(var i = 0; i < n.length; i++){ h = (h * 31 + n.charCodeAt(i)) | 0; } slug = 'x' + Math.abs(h).toString(36); }
+    return REV_PREFIX + slug;
+  }
+  function isVirtualCategory(key){ return key === PLANNER_KEY || !!revCats[key]; }
+  /** Matières de révision encore présentes dans l'agenda (pour les filtres). */
+  function revCategoryList(){
+    return Object.keys(revCats).filter(function(k){ return tasks.some(function(t){ return t.category === k; }); })
+      .map(function(k){ return { key:k, label:revCats[k].label, color:revCats[k].color }; });
+  }
 
   var CATEGORIES = loadCategories();
   var GROUPS = loadGroups();
@@ -1209,6 +1360,7 @@ window.addEventListener('error', function(ev){
   }
   function getCategory(key){
     if(key === PLANNER_KEY) return { key:PLANNER_KEY, label:'Planificateur', color: plannerCfg.color };
+    if(revCats[key]) return { key:key, label:revCats[key].label, color:revCats[key].color };
     for(var i=0;i<CATEGORIES.length;i++){ if(CATEGORIES[i].key === key) return CATEGORIES[i]; }
     return FALLBACK_CATEGORY;
   }
@@ -1627,11 +1779,11 @@ window.addEventListener('error', function(ev){
   function buildCategorySelect(){
     var wrap = document.getElementById('category-select');
     wrap.innerHTML = '';
-    var isPlannerSel = (selectedCategory === PLANNER_KEY);
+    var isPlannerSel = isVirtualCategory(selectedCategory);
     if(!isPlannerSel && !CATEGORIES.some(function(c){ return c.key === selectedCategory; })){
       selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : '_none';
     }
-    (isPlannerSel ? [getCategory(PLANNER_KEY)].concat(CATEGORIES) : CATEGORIES).forEach(function(c){
+    (isPlannerSel ? [getCategory(selectedCategory)].concat(CATEGORIES) : CATEGORIES).forEach(function(c){
       var chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'chip' + (c.key === selectedCategory ? ' is-active' : '');
@@ -1647,7 +1799,7 @@ window.addEventListener('error', function(ev){
   function buildCategoryFilters(){
     var wrap = document.getElementById('category-filters');
     wrap.innerHTML = '';
-    CATEGORIES.concat([getCategory(PLANNER_KEY)]).forEach(function(c){
+    CATEGORIES.concat([getCategory(PLANNER_KEY)], revCategoryList()).forEach(function(c){
       if(!(c.key in filters.categories)) filters.categories[c.key] = true;
       var chip = document.createElement('button');
       chip.type = 'button';
@@ -1796,7 +1948,7 @@ window.addEventListener('error', function(ev){
       document.getElementById('f-travel-before').value = (prefill && prefill.travelBefore) || 0;
       document.getElementById('f-travel-after').value = (prefill && prefill.travelAfter) || 0;
       if(prefill && prefill.category) selectedCategory = prefill.category;
-      else if(selectedCategory === PLANNER_KEY) selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : '_none';
+      else if(isVirtualCategory(selectedCategory)) selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : '_none';
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
       document.getElementById('f-recurrence').value = 'none';
@@ -2649,7 +2801,8 @@ window.addEventListener('error', function(ev){
   function showPanel(name){
     document.getElementById('panel-calendar').classList.toggle('hide-mobile', name !== 'calendar');
     document.getElementById('panel-list').classList.toggle('hide-mobile', name !== 'list');
-    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left');
+    document.getElementById('panel-left').classList.toggle('hide-mobile', name !== 'left' && name !== 'generators');
+    document.getElementById('panel-left').classList.toggle('mobile-gen', name === 'generators');
     document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(b){ b.classList.toggle('active', b.dataset.panel === name); });
   }
   document.querySelectorAll('.view-tabs.mobile-only button').forEach(function(btn){
@@ -3011,6 +3164,453 @@ window.addEventListener('error', function(ev){
       wrap.appendChild(row);
     });
   }
+
+  /* ================================================================
+     PROGRAMME DE RÉVISIONS
+     Génère des séances de révision dans les créneaux encore libres
+     de l'agenda (tâches horaires et journées entières prises en compte).
+  ================================================================= */
+  (function(){
+    var PREFS_KEY = 'agenda_revision_prefs_v1';
+    var GAP = 10; // pause (en minutes) entre deux séances d'une même journée
+
+    function $(id){ return document.getElementById(id); }
+    var overlay = $('rev-overlay');
+    var subjectsBox = $('rev-subjects');
+    var errorBox = $('rev-error');
+    var previewBox = $('rev-preview');
+    var state = null;       // réglages en cours d'édition
+    var currentPlan = null; // dernier programme généré (aperçu)
+
+    function paletteColor(i){ return SWATCH_PALETTE[i % SWATCH_PALETTE.length]; }
+    function freeColor(subjects){
+      var used = subjects.map(function(s){ return (s.color || '').toLowerCase(); });
+      for(var i = 0; i < SWATCH_PALETTE.length; i++){ if(used.indexOf(SWATCH_PALETTE[i].toLowerCase()) === -1) return SWATCH_PALETTE[i]; }
+      return paletteColor(subjects.length);
+    }
+    function minToTime(m){ return pad(Math.floor(m/60)) + ':' + pad(m % 60); }
+
+    /* ---------------- réglages (mémorisés d'une fois sur l'autre) ---------------- */
+    function defaults(){
+      var w = {}; [0,1,2,3,4,5,6].forEach(function(i){ w[i] = true; });
+      return {
+        subjects: [{ name:'', date:'', time:'', chapters:3, color:paletteColor(0) }],
+        mode:'day', hours:2, weekdays:w, from:'17:00', to:'21:00', session:60,
+        spread:true, review:true, avoidAllDay:true, addExams:true, category:''
+      };
+    }
+    function loadPrefs(){
+      var d = defaults();
+      try{
+        var raw = localStorage.getItem(PREFS_KEY);
+        if(raw){
+          var p = JSON.parse(raw);
+          Object.keys(d).forEach(function(k){ if(p[k] !== undefined && p[k] !== null) d[k] = p[k]; });
+        }
+      }catch(e){}
+      var today = todayStr();
+      d.subjects = (Array.isArray(d.subjects) ? d.subjects : []).map(function(s, i){
+        if(s.date && s.date <= today) s.date = ''; // un examen passé n'a plus de sens
+        return { name:s.name || '', date:s.date || '', time:s.time || '', chapters:s.chapters || 3,
+                 color:/^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : paletteColor(i) };
+      });
+      if(!d.subjects.length) d.subjects = defaults().subjects;
+      return d;
+    }
+    function savePrefs(){ try{ localStorage.setItem(PREFS_KEY, JSON.stringify(state)); }catch(e){} }
+
+    /* ---------------- formulaire ---------------- */
+    function buildSubjects(){
+      subjectsBox.innerHTML = '';
+      var minDate = toDateStr(addDays(new Date(), 1));
+      state.subjects.forEach(function(s){
+        var row = document.createElement('div');
+        row.className = 'rev-subject';
+        row.innerHTML =
+          '<div class="rev-subject-head">' +
+            '<input type="text" class="rs-name" maxlength="40" placeholder="Matière (ex. Droit des contrats)">' +
+            '<button type="button" class="icon-btn danger" title="Retirer cette matière">✕</button>' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label class="field-label">Date de l’examen</label><input type="date" class="rs-date"></div>' +
+            '<div class="field"><label class="field-label">Heure <span class="field-hint-inline">(optionnel)</span></label><input type="time" class="rs-time"></div>' +
+          '</div>' +
+          '<div class="field" style="margin-bottom:0;">' +
+            '<label class="field-label">Chapitres à réviser</label>' +
+            '<input type="number" class="rs-chap" min="1" max="40">' +
+            '<div class="field-hint">Indiquez plus de chapitres pour une matière plus lourde.</div>' +
+          '</div>';
+        var name = row.querySelector('.rs-name'), date = row.querySelector('.rs-date'),
+            time = row.querySelector('.rs-time'), chap = row.querySelector('.rs-chap');
+        var head = row.querySelector('.rev-subject-head');
+        head.insertBefore(createColorSwatchPicker(s.color, function(hex){ s.color = hex; }), head.firstChild);
+        name.value = s.name; date.value = s.date; date.min = minDate; time.value = s.time; chap.value = s.chapters;
+        name.addEventListener('input', function(){ s.name = name.value; });
+        date.addEventListener('change', function(){ s.date = date.value; });
+        time.addEventListener('change', function(){ s.time = time.value; });
+        chap.addEventListener('input', function(){ s.chapters = parseInt(chap.value, 10) || 1; });
+        row.querySelector('.icon-btn').addEventListener('click', function(){
+          state.subjects.splice(state.subjects.indexOf(s), 1);
+          if(!state.subjects.length) state.subjects.push({ name:'', date:'', time:'', chapters:3, color:paletteColor(0) });
+          buildSubjects();
+        });
+        subjectsBox.appendChild(row);
+      });
+    }
+
+    function buildWeekdays(){
+      var wrap = $('rev-weekdays');
+      wrap.innerHTML = '';
+      WEEKDAY_DEFS.forEach(function(w){
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'day-chip' + (state.weekdays[w.i] ? ' is-active' : '');
+        chip.textContent = w.l;
+        chip.addEventListener('click', function(){ state.weekdays[w.i] = !state.weekdays[w.i]; buildWeekdays(); });
+        wrap.appendChild(chip);
+      });
+    }
+
+    function fillSettings(){
+      $('rev-hours').value = state.hours;
+      $('rev-mode').value = state.mode;
+      $('rev-from').value = state.from;
+      $('rev-to').value = state.to;
+      $('rev-session').value = String(state.session);
+      $('rev-spread').checked = !!state.spread;
+      $('rev-review').checked = !!state.review;
+      $('rev-avoid-allday').checked = !!state.avoidAllDay;
+      $('rev-add-exams').checked = !!state.addExams;
+      buildWeekdays();
+    }
+
+    function readSettings(){
+      state.hours = parseFloat($('rev-hours').value) || 0;
+      state.mode = $('rev-mode').value;
+      state.from = $('rev-from').value;
+      state.to = $('rev-to').value;
+      state.session = parseInt($('rev-session').value, 10) || 60;
+      state.spread = $('rev-spread').checked;
+      state.review = $('rev-review').checked;
+      state.avoidAllDay = $('rev-avoid-allday').checked;
+      state.addExams = $('rev-add-exams').checked;
+    }
+
+    function validate(cfg){
+      var today = todayStr();
+      var limit = toDateStr(addDays(new Date(), 365));
+      var subs = cfg.subjects.filter(function(s){ return (s.name || '').trim() || s.date; });
+      if(!subs.length) return 'Ajoutez au moins une matière avec sa date d’examen.';
+      for(var i = 0; i < subs.length; i++){
+        var s = subs[i], n = (s.name || '').trim();
+        if(!n) return 'Une matière n’a pas de nom.';
+        if(!s.date) return 'Indiquez la date d’examen de « ' + n + ' ».';
+        if(s.date <= today) return 'L’examen de « ' + n + ' » doit avoir lieu après aujourd’hui.';
+        if(s.date > limit) return 'L’examen de « ' + n + ' » est trop éloigné (un an maximum).';
+      }
+      if(!(cfg.hours > 0)) return 'Indiquez un temps de révision supérieur à 0.';
+      if(!WEEKDAY_DEFS.some(function(w){ return cfg.weekdays[w.i]; })) return 'Choisissez au moins un jour de révision.';
+      var a = timeToMinutes(cfg.from), b = timeToMinutes(cfg.to);
+      if(a === null || b === null || b - a < 30) return 'La plage horaire doit durer au moins 30 minutes.';
+      return null;
+    }
+
+    /* ---------------- calcul des créneaux ---------------- */
+    function subtract(free, s, e){
+      var out = [];
+      free.forEach(function(iv){
+        var a = iv[0], b = iv[1];
+        if(e <= a || s >= b){ out.push(iv); return; }
+        if(s > a) out.push([a, s]);
+        if(e < b) out.push([e, b]);
+      });
+      return out;
+    }
+    function findSlot(free, dur){
+      for(var i = 0; i < free.length; i++){
+        var a = Math.ceil(free[i][0] / 15) * 15;
+        if(a + dur <= free[i][1]) return a;
+      }
+      return null;
+    }
+    function weekKey(ds){ return toDateStr(getWeekStart(parseDateStr(ds))); }
+
+    /** Ce qui occupe déjà la journée : créneaux horaires (trajets compris) + éventuelle tâche « journée entière ».
+        Comme le planificateur, on ignore les tâches terminées. Les séances de révision à venir
+        non terminées sont aussi ignorées : elles seront remplacées. */
+    function busyFor(ds, today){
+      var blocks = [], full = false;
+      tasks.forEach(function(t){
+        if(t.done || t.reminder) return;
+        if(t.revision && t.date >= today) return;
+        if(t.time){
+          if(t.date === ds){
+            var s = timeToMinutes(t.time);
+            if(s === null || isNaN(s)) return;
+            blocks.push([s - (t.travelBefore || 0), s + (t.duration || 30) + (t.travelAfter || 0)]);
+          }
+        } else if(taskCoversDate(t, ds)){ full = true; }
+      });
+      return { blocks:blocks, full:full };
+    }
+
+    /* ---------------- génération du programme ---------------- */
+    function generate(cfg){
+      var today = todayStr();
+      var subjects = cfg.subjects.filter(function(s){ return (s.name || '').trim() && s.date; }).map(function(s, i){
+        var examD = parseDateStr(s.date);
+        var o = {
+          idx:i, name:s.name.trim(), date:s.date, time:s.time || '', color:s.color || '#2F5D50',
+          chapters:Math.max(1, Math.min(40, parseInt(s.chapters, 10) || 1)),
+          credit:0, units:[],
+          lastDay:toDateStr(addDays(examD, -1)),
+          reviewFrom:toDateStr(addDays(examD, -2)),
+          chapDeadline:toDateStr(addDays(examD, cfg.review ? -2 : -1))
+        };
+        for(var c = 1; c <= o.chapters; c++) o.units.push({ kind:'chapter', placed:false });
+        if(cfg.review) o.units.push({ kind:'review', placed:false });
+        return o;
+      });
+
+      var total = Math.round(cfg.hours * 60);
+      var L = cfg.session;
+      if(total < L) L = Math.max(15, Math.floor(total / 15) * 15);
+      var perDay = cfg.mode === 'day';
+      var nDays = WEEKDAY_DEFS.filter(function(w){ return cfg.weekdays[w.i]; }).length;
+      var dayCap = perDay ? Math.max(total, L) : Math.max(Math.ceil(total / nDays / 15) * 15, L);
+      var weekCap = perDay ? Infinity : Math.max(total, L);
+
+      var ws = Math.max(timeToMinutes(cfg.from), HOUR_START * 60);
+      var we = Math.min(timeToMinutes(cfg.to), HOUR_END * 60);
+
+      var lastExam = subjects.reduce(function(m, s){ return s.date > m ? s.date : m; }, '');
+      var lastDay = addDays(parseDateStr(lastExam), -1);
+      var days = [];
+      for(var d = parseDateStr(today); d <= lastDay; d = addDays(d, 1)){
+        if(cfg.weekdays[d.getDay()]) days.push(toDateStr(d));
+      }
+
+      var dayState = {}, weekUsed = {}, placed = [];
+      function dayInfo(ds){
+        if(dayState[ds]) return dayState[ds];
+        var busy = busyFor(ds, today);
+        var free = we > ws ? [[ws, we]] : [];
+        if(ds === today) free = subtract(free, 0, Math.ceil((nowMinutes() + 15) / 15) * 15);
+        busy.blocks.forEach(function(b){ free = subtract(free, b[0], b[1]); });
+        dayState[ds] = { free:free, used:0, blocked:!!(cfg.avoidAllDay && busy.full), wk:weekKey(ds) };
+        return dayState[ds];
+      }
+      function tryPlace(s, unit, ds){
+        var info = dayInfo(ds);
+        if(info.blocked || info.used + L > dayCap) return false;
+        if((weekUsed[info.wk] || 0) + L > weekCap) return false;
+        var slot = findSlot(info.free, L);
+        if(slot === null) return false;
+        info.free = subtract(info.free, slot - GAP, slot + L + GAP);
+        info.used += L;
+        weekUsed[info.wk] = (weekUsed[info.wk] || 0) + L;
+        unit.placed = true;
+        placed.push({ date:ds, start:slot, s:s, unit:unit });
+        return true;
+      }
+      function nextUnit(s, ds){
+        for(var i = 0; i < s.units.length; i++){
+          var u = s.units[i];
+          if(u.placed) continue;
+          if(u.kind === 'review' && ds < s.reviewFrom) return null;
+          return u;
+        }
+        return null;
+      }
+
+      // 1) Passage jour par jour : on cumule un « crédit » de séances par matière (rythme régulier),
+      //    et on place une séance dès qu'un crédit entier est disponible. Les matières sont
+      //    alternées dans la journée, l'examen le plus proche passant en premier.
+      days.forEach(function(ds){
+        var active = subjects.filter(function(s){ return ds <= s.lastDay; });
+        active.forEach(function(s){
+          var chapRem = s.units.filter(function(u){ return u.kind === 'chapter' && !u.placed; }).length;
+          if(chapRem > 0){
+            var left = days.filter(function(x){ return x >= ds && x <= s.chapDeadline; }).length;
+            var eff = left > 3 ? left - 1 : Math.max(1, left); // garde un jour de marge
+            s.credit += cfg.spread ? chapRem / eff : chapRem;
+          } else if(s.units.some(function(u){ return u.kind === 'review' && !u.placed; }) && ds >= s.reviewFrom){
+            s.credit = Math.max(s.credit, 1);
+          }
+        });
+        var todayCount = {};
+        for(var guard = 0; guard < 50; guard++){
+          var cands = active.map(function(s){ return { s:s, u:nextUnit(s, ds) }; })
+            .filter(function(c){ return c.u && c.s.credit >= 0.999; });
+          if(!cands.length) break;
+          cands.sort(function(a, b){
+            var pa = todayCount[a.s.idx] || 0, pb = todayCount[b.s.idx] || 0;
+            if(pa !== pb) return pa - pb;
+            if(a.s.date !== b.s.date) return a.s.date < b.s.date ? -1 : 1;
+            return b.s.credit - a.s.credit;
+          });
+          var ok = false;
+          for(var k = 0; k < cands.length; k++){
+            if(tryPlace(cands[k].s, cands[k].u, ds)){
+              cands[k].s.credit -= 1;
+              todayCount[cands[k].s.idx] = (todayCount[cands[k].s.idx] || 0) + 1;
+              ok = true; break;
+            }
+          }
+          if(!ok) break;
+        }
+      });
+
+      // 2) Rattrapage : les séances restantes prennent toute place encore libre avant leur examen.
+      var pending = [];
+      subjects.forEach(function(s){ s.units.forEach(function(u){ if(!u.placed) pending.push({ s:s, u:u }); }); });
+      pending.sort(function(a, b){ return a.s.date < b.s.date ? -1 : (a.s.date > b.s.date ? 1 : 0); });
+      pending.forEach(function(p){
+        for(var i = 0; i < days.length; i++){
+          var ds = days[i];
+          if(ds > p.s.lastDay) break;
+          if(p.u.kind === 'review' && ds < p.s.reviewFrom) continue;
+          if(tryPlace(p.s, p.u, ds)) break;
+        }
+      });
+
+      // 3) Numérotation des chapitres dans l'ordre chronologique, puis titres.
+      placed.sort(function(a, b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : a.start - b.start); });
+      var counters = {};
+      var sessions = placed.map(function(p){
+        var s = p.s, title;
+        if(p.unit.kind === 'review'){ title = 'Rappel · ' + s.name; }
+        else {
+          counters[s.idx] = (counters[s.idx] || 0) + 1;
+          title = 'Réviser · ' + s.name + (s.chapters > 1 ? ' (ch. ' + counters[s.idx] + '/' + s.chapters + ')' : '');
+        }
+        return { date:p.date, start:p.start, duration:L, title:title, subject:s.name, color:s.color };
+      });
+
+      var missing = [];
+      subjects.forEach(function(s){
+        var n = s.units.filter(function(u){ return !u.placed; }).length;
+        if(n) missing.push({ name:s.name, count:n, minutes:n * L });
+      });
+      return { sessions:sessions, missing:missing, subjects:subjects, cfg:cfg, length:L };
+    }
+
+    /* ---------------- aperçu ---------------- */
+    function renderPreview(plan){
+      var cfg = plan.cfg, today = todayStr();
+      var html = '';
+      var totalMin = plan.sessions.length * plan.length;
+
+      if(plan.sessions.length){
+        var first = parseDateStr(plan.sessions[0].date), last = parseDateStr(plan.sessions[plan.sessions.length - 1].date);
+        html += '<p class="rev-summary">' + plan.sessions.length + ' séance' + (plan.sessions.length > 1 ? 's' : '') + ' · ' + formatDuration(totalMin) + ' de révision</p>';
+        html += '<div class="rev-summary-sub">Du ' + fmtDayMonth(first) + ' au ' + fmtDayMonth(last) + '.</div>';
+      }
+      plan.missing.forEach(function(m){
+        html += '<div class="rev-warning">Pas assez de place pour ' + m.count + ' séance' + (m.count > 1 ? 's' : '') + ' de « ' + escapeHtml(m.name) + ' » (environ ' + formatDuration(m.minutes) + '). Augmentez le temps disponible, élargissez la plage horaire ou réduisez le nombre de chapitres.</div>';
+      });
+      if(!plan.sessions.length){
+        html += '<div class="rev-warning">Aucune séance n’a pu être placée. Vérifiez la plage horaire, les jours choisis et les tâches déjà prévues.</div>';
+      }
+      var replaced = tasks.filter(function(t){ return t.revision && !t.done && t.date >= today; }).length;
+      if(replaced){
+        html += '<div class="rev-note">' + replaced + ' élément' + (replaced > 1 ? 's' : '') + ' d’un programme précédent (non terminés) ' + (replaced > 1 ? 'seront remplacés' : 'sera remplacé') + '.</div>';
+      }
+
+      var byDate = {};
+      plan.sessions.forEach(function(s){ (byDate[s.date] = byDate[s.date] || { sessions:[], exams:[] }).sessions.push(s); });
+      if(cfg.addExams){
+        plan.subjects.forEach(function(s){ (byDate[s.date] = byDate[s.date] || { sessions:[], exams:[] }).exams.push(s); });
+      }
+      html += '<div class="rev-preview-scroll">';
+      Object.keys(byDate).sort().forEach(function(ds){
+        html += '<div class="day-group-label">' + escapeHtml(fmtFull(parseDateStr(ds))) + '</div>';
+        byDate[ds].exams.forEach(function(s){
+          html += '<div class="rev-session is-exam" style="--cat:' + s.color + '"><span class="rev-time">' + (s.time || '🚩') + '</span><span>Examen · ' + escapeHtml(s.name) + '</span></div>';
+        });
+        byDate[ds].sessions.forEach(function(s){
+          html += '<div class="rev-session" style="--cat:' + s.color + '"><span class="rev-time">' + minToTime(s.start) + ' – ' + minToTime(s.start + s.duration) + '</span><span>' + escapeHtml(s.title) + '</span></div>';
+        });
+        html += '<div style="height:8px"></div>';
+      });
+      html += '</div>';
+      previewBox.innerHTML = html;
+      $('rev-commit-btn').style.display = plan.sessions.length ? '' : 'none';
+    }
+
+    /* ---------------- ajout à l'agenda ---------------- */
+    function commit(){
+      if(!currentPlan || !currentPlan.sessions.length) return;
+      var cfg = currentPlan.cfg, today = todayStr(), planId = uid();
+      // Le programme précédent (séances à venir non terminées) est remplacé.
+      tasks = tasks.filter(function(t){ return !(t.revision && !t.done && t.date >= today); });
+      currentPlan.subjects.forEach(function(s){ revCats[revCatKey(s.name)] = { label:s.name, color:s.color }; });
+      currentPlan.sessions.forEach(function(s){
+        tasks.push({
+          id:uid(), title:s.title, category:revCatKey(s.subject), date:s.date, time:minToTime(s.start),
+          duration:s.duration, deadline:'', endDate:'', done:false, revision:true, planId:planId
+        });
+      });
+      if(cfg.addExams){
+        currentPlan.subjects.forEach(function(s){
+          var base = { id:uid(), title:'Examen · ' + s.name, category:revCatKey(s.name), date:s.date, deadline:'', endDate:'', done:false, revision:true, planId:planId };
+          if(s.time){ base.time = s.time; base.duration = 120; }
+          else { base.time = ''; base.duration = 0; base.reminder = true; }
+          tasks.push(base);
+        });
+      }
+      Object.keys(revCats).forEach(function(k){ if(!tasks.some(function(t){ return t.category === k; })) delete revCats[k]; });
+      saveRevCats();
+      saveTasks();
+      closeRev();
+      currentDate = parseDateStr(currentPlan.sessions[0].date);
+      calendarView = 'week';
+      setActiveViewButton();
+      buildCategoryFilters();
+      renderAll();
+      if(window.innerWidth <= 980) showPanel('calendar');
+    }
+
+    /* ---------------- ouverture / fermeture ---------------- */
+    function showStep(name){
+      $('rev-step-form').style.display = name === 'form' ? '' : 'none';
+      $('rev-step-preview').style.display = name === 'preview' ? '' : 'none';
+      overlay.querySelector('.modal-card').scrollTop = 0;
+    }
+    function openRev(){
+      state = loadPrefs();
+      currentPlan = null;
+      errorBox.style.display = 'none';
+      buildSubjects();
+      fillSettings();
+      showStep('form');
+      overlay.classList.add('is-open');
+    }
+    function closeRev(){ overlay.classList.remove('is-open'); }
+
+    $('open-rev-btn').addEventListener('click', openRev);
+    $('rev-close').addEventListener('click', closeRev);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) closeRev(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && overlay.classList.contains('is-open')) closeRev(); });
+    $('rev-add-subject-btn').addEventListener('click', function(){
+      state.subjects.push({ name:'', date:'', time:'', chapters:3, color:freeColor(state.subjects) });
+      buildSubjects();
+      var inputs = subjectsBox.querySelectorAll('.rs-name');
+      if(inputs.length) inputs[inputs.length - 1].focus();
+    });
+    $('rev-generate-btn').addEventListener('click', function(){
+      readSettings();
+      var err = validate(state);
+      if(err){ errorBox.textContent = err; errorBox.style.display = ''; return; }
+      errorBox.style.display = 'none';
+      savePrefs();
+      currentPlan = generate(state);
+      renderPreview(currentPlan);
+      showStep('preview');
+    });
+    $('rev-back-btn').addEventListener('click', function(){ showStep('form'); });
+    $('rev-commit-btn').addEventListener('click', commit);
+  })();
 
   /* ---------------- init ---------------- */
   function renderAll(){ renderList(); renderCalendar(); renderPlannerBatches(); }
