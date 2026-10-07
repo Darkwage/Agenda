@@ -17,6 +17,26 @@
 </intent-filter>
 <meta-data android:name="android.appwidget.provider" android:resource="@xml/agenda_widget_info"/>
 </receiver>
+  <receiver android:name=".AgendaWeekWidgetProvider" android:exported="true" android:label="@string/widget_label_week">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/agenda_week_widget_info"/>
+</receiver>
+
+<receiver android:name=".AgendaMonthWidgetProvider" android:exported="true" android:label="@string/widget_label_month">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/agenda_month_widget_info"/>
+</receiver>
+
+<receiver android:name=".AgendaListWidgetProvider" android:exported="true" android:label="@string/widget_label_list">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/agenda_list_widget_info"/>
+</receiver>
 </application>
 <!--  Permissions  -->
 <uses-permission android:name="android.permission.INTERNET"/>
