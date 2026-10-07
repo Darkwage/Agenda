@@ -20,24 +20,13 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "WidgetBridge")
 public class WidgetBridgePlugin extends Plugin {
 
-    @PluginMethod
-    public void refresh(PluginCall call) {
-        try {
-            Context context = getContext();
-            AppWidgetManager manager = AppWidgetManager.getInstance(context);
-            ComponentName provider = new ComponentName(context, AgendaWidgetProvider.class);
-            int[] widgetIds = manager.getAppWidgetIds(provider);
-
-            if (widgetIds != null && widgetIds.length > 0) {
-                Intent intent = new Intent(context, AgendaWidgetProvider.class);
-                intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds);
-                context.sendBroadcast(intent);
-            }
-            call.resolve();
-        } catch (Exception e) {
-            // Never let a widget-refresh hiccup break the app's own save flow.
-            call.resolve();
-        }
+  @PluginMethod
+public void refresh(PluginCall call) {
+    try {
+        AgendaWidgetCommon.refreshAll(getContext());
+    } catch (Exception e) {
+        // Never let a widget-refresh hiccup break the app's own save flow.
     }
+    call.resolve();
+}
 }
