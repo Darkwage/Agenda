@@ -215,8 +215,8 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
         int widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250);
         int heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180);
-        int reservedDp = 44 + (allDay.isEmpty() ? 0 : 18) + 20; // header + all-day line + padding
-        int widthPx = Math.max(220, Math.round((widthDp - 20) * density));
+        int reservedDp = 84 + (allDay.isEmpty() ? 0 : 22); // padding 32 + header 44 + marge 8 (+ ligne "toute la journée")
+        int widthPx = Math.max(220, Math.round((widthDp - 32) * density));
         int heightPx = Math.max(140, Math.round(Math.max(90, heightDp - reservedDp) * density));
 
         Bitmap bmp = drawTimeline(timed, widthPx, heightPx, density, isRealToday);
