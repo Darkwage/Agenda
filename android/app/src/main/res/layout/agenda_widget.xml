@@ -1,15 +1,82 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_background" android:padding="10dp">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="4dp">
-<Button android:id="@+id/btn_prev" android:layout_width="32dp" android:layout_height="32dp" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp" android:text="‹" android:textSize="18sp" android:textColor="#5B5F66" android:textStyle="bold" android:background="@drawable/widget_nav_button"/>
-<TextView android:id="@+id/tv_date" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="#21252C" android:textSize="15sp" android:textStyle="bold" android:singleLine="true" android:ellipsize="end" android:text="Aujourd'hui"/>
-<Button android:id="@+id/btn_next" android:layout_width="32dp" android:layout_height="32dp" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp" android:text="›" android:textSize="18sp" android:textColor="#5B5F66" android:textStyle="bold" android:background="@drawable/widget_nav_button"/>
-</LinearLayout>
-<TextView android:id="@+id/tv_allday" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#5B5F66" android:textSize="10.5sp" android:singleLine="true" android:ellipsize="end" android:paddingBottom="4dp" android:visibility="gone"/>
-<!--  The whole day timeline (hour ticks, colored task blocks, progress,
-         "now" line) is a single custom-drawn bitmap. RemoteViews only
-         allows a small whitelist of view types (confirmed the hard way
-         earlier), but any bitmap content is fair game inside an ImageView,
-         so this is how we get a real calendar-like visual instead of being
-         limited to plain text rows.  -->
-<ImageView android:id="@+id/iv_timeline" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:scaleType="fitXY" android:contentDescription="Planning du jour"/>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Jour (nouveau style) - mêmes ids que AgendaWidgetProvider : btn_prev, btn_next, tv_date, tv_allday, iv_timeline -->
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="16dp"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_weight="1">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.12"
+                android:id="@+id/tv_label"
+                android:text="JOUR"
+                android:textColor="#3B5F51"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/tv_date"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Aujourd’hui"
+                android:textColor="#1C1D21"
+                android:textSize="22sp"
+                android:fontFamily="serif"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:id="@+id/btn_prev"
+            android:layout_marginStart="0dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="#1C1D21"
+            android:textSize="16sp" />
+        <TextView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:id="@+id/btn_next"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="›"
+            android:textColor="#1C1D21"
+            android:textSize="16sp" />
+    </LinearLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/tv_allday"
+        android:layout_marginTop="8dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:visibility="gone"
+        android:text=""
+        android:textColor="#5B5F66"
+        android:textSize="10.5sp"
+        android:fontFamily="monospace" />
+    <ImageView
+        android:id="@+id/iv_timeline"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:scaleType="fitXY"
+        android:contentDescription="Planning du jour" />
 </LinearLayout>
