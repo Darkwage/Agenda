@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Liste -->
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="16dp"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_weight="1">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.12"
+                android:id="@+id/tv_label"
+                android:text="…"
+                android:textColor="#3B5F51"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/tv_title"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="…"
+                android:textColor="#1C1D21"
+                android:textSize="24sp"
+                android:fontFamily="serif"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:id="@+id/btn_add"
+            android:background="@drawable/widget_btn_green_bg"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+    </LinearLayout>
+    <ImageView
+        android:id="@+id/iv_body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp"
+        android:scaleType="fitXY"
+        android:contentDescription="Prochaines tâches" />
+</LinearLayout>

@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aperçu widget Liste (4x3) -->
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="16dp"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_weight="1">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.12"
+                android:text="4 À VENIR"
+                android:textColor="#3B5F51"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Prochainement"
+                android:textColor="#1C1D21"
+                android:textSize="24sp"
+                android:fontFamily="serif"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:background="@drawable/widget_btn_green_bg"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/widget_card_bg">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <FrameLayout
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@drawable/widget_check_bg" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="Rendre le rapport"
+                    android:textColor="#1C1D21"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aujourd’hui · 17:00"
+                    android:textColor="#8A8A85"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+            <FrameLayout
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_dot_terracotta"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="#E3DFD4" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <FrameLayout
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@drawable/widget_check_bg" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="Réviser le chapitre 3"
+                    android:textColor="#1C1D21"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aujourd’hui · 14:00"
+                    android:textColor="#8A8A85"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+            <FrameLayout
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_dot_green"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="#E3DFD4" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <FrameLayout
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@drawable/widget_check_bg" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="Appeler le médecin"
+                    android:textColor="#1C1D21"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Demain · 09:00"
+                    android:textColor="#8A8A85"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+            <FrameLayout
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_dot_slate"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="#E3DFD4" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <FrameLayout
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@drawable/widget_check_bg" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="Programme de révisions"
+                    android:textColor="#1C1D21"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ven. 9 octobre"
+                    android:textColor="#8A8A85"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+            <FrameLayout
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_dot_green"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

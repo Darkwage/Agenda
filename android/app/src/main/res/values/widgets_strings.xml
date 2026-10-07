@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label_day">Agenda · Jour</string>
+    <string name="widget_label_week">Agenda · Semaine</string>
+    <string name="widget_label_month">Agenda · Mois</string>
+    <string name="widget_label_list">Agenda · Liste</string>
+    <string name="widget_description_week">Votre semaine d’un coup d’œil, jour par jour</string>
+    <string name="widget_description_month">Le mois en cours avec vos tâches du jour</string>
+    <string name="widget_description_list">Vos prochaines tâches, dans l’ordre</string>
+</resources>
