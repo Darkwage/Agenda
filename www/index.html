@@ -193,6 +193,27 @@
 
   .sidebar-left .card + .card{ margin-top:16px; }
 
+  /* ---------- anniversaires ---------- */
+  .is-birthday{ --cat:#B5476B; --cat-soft:#F8E4EC; }
+  .month-chip.is-birthday, .allday-chip.is-birthday{ cursor:default; }
+  .bday-opts{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 12px; font-size:12.5px; color:var(--ink-soft); }
+  .bday-opts input[type=time]{ font-size:13px; border:1px solid var(--line); border-radius:6px; background:var(--surface); padding:4px 6px; }
+  .bday-eve{ display:inline-flex; align-items:center; gap:6px; }
+  .bday-row{ display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:8px; }
+  .bday-row:hover{ background:var(--paper); }
+  .bday-main{ flex:1; min-width:0; }
+  .bday-name{ font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bday-meta{ font-size:11px; color:var(--ink-faint); }
+  .bday-when{ flex:none; font-size:11.5px; color:var(--ink-soft); font-family:var(--font-mono); }
+  .bday-when.bday-soon{ color:var(--accent-dark); font-weight:600; }
+  .bday-add{ display:flex; flex-direction:column; gap:8px; padding-top:10px; border-top:1px solid var(--line-soft); }
+  .bday-add-row{ display:flex; align-items:center; gap:8px; }
+  .bday-add input[type=text], .bday-add input[type=number], .bday-add select{
+    min-width:0; font-size:13px; border:1px solid var(--line); border-radius:6px; background:var(--surface); padding:6px 8px;
+  }
+  .bday-add input[type=number]{ width:68px; flex:none; }
+  .bday-add select{ flex:1; }
+
   /* ---------- categories manager ---------- */
   .cat-manager-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
   .cat-group-select{
@@ -759,6 +780,33 @@
       </section>
 
       <section class="card">
+        <details class="collapsible" id="bday-details">
+          <summary>🎂 Anniversaires <span class="chev">▸</span></summary>
+          <div class="field-hint" style="margin-bottom:10px;">Ajoutez les anniversaires de vos proches : ils apparaissent dans le calendrier et l'appli vous prévient à l'heure choisie, même fermée.</div>
+          <div class="toggle-row">
+            <input type="checkbox" id="bday-notif-enabled">
+            <label for="bday-notif-enabled">🔔 Me rappeler les anniversaires</label>
+          </div>
+          <div class="bday-opts">
+            <label for="bday-time">Le jour même à</label>
+            <input type="time" id="bday-time" value="09:00">
+            <label class="bday-eve"><input type="checkbox" id="bday-eve" checked> et la veille à 18 h</label>
+          </div>
+          <div class="cat-manager-list" id="bday-list"></div>
+          <div class="bday-add">
+            <input type="text" id="bday-name" placeholder="Prénom ou nom" maxlength="40">
+            <div class="bday-add-row">
+              <input type="number" id="bday-day" min="1" max="31" placeholder="Jour" inputmode="numeric">
+              <select id="bday-month" aria-label="Mois"><option value="">Mois</option><option value="1">janvier</option><option value="2">février</option><option value="3">mars</option><option value="4">avril</option><option value="5">mai</option><option value="6">juin</option><option value="7">juillet</option><option value="8">août</option><option value="9">septembre</option><option value="10">octobre</option><option value="11">novembre</option><option value="12">décembre</option></select>
+              <input type="number" id="bday-year" min="1900" max="2100" placeholder="Année" inputmode="numeric" title="Facultatif">
+              <button type="button" class="cat-add-btn" id="bday-add-btn" aria-label="Ajouter">＋</button>
+            </div>
+            <div class="field-hint">L'année est facultative : elle sert à afficher l'âge.</div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
         <details class="collapsible" id="backup-details">
           <summary>Sauvegarde <span class="chev">▸</span></summary>
           <div class="field-hint" style="margin-bottom:10px;">Exportez vos tâches pour les transférer vers une autre appli ou un autre appareil, ou pour faire une copie de sécurité.</div>
@@ -1260,6 +1308,57 @@ window.addEventListener('error', function(ev){
     return [];
   }
   function saveGroups(){ try{ localStorage.setItem(GROUPS_KEY, JSON.stringify(GROUPS)); }catch(e){} }
+
+  /* ---------------- anniversaires : données ---------------- */
+  var BDAY_KEY = 'agenda_birthdays_v1';
+  var BDAY_CFG_KEY = 'agenda_birthday_cfg_v1';
+  var BDAY_NOTIF_KEY = 'agenda_birthday_notif';
+  function loadBirthdays(){
+    try{
+      var arr = JSON.parse(localStorage.getItem(BDAY_KEY) || '[]');
+      return Array.isArray(arr) ? arr.filter(function(b){
+        return b && typeof b.name === 'string' && b.day >= 1 && b.day <= 31 && b.month >= 1 && b.month <= 12;
+      }) : [];
+    }catch(e){ return []; }
+  }
+  function loadBdayCfg(){
+    try{
+      var c = JSON.parse(localStorage.getItem(BDAY_CFG_KEY) || 'null');
+      if(c && typeof c === 'object') return { time: /^\d{2}:\d{2}$/.test(c.time || '') ? c.time : '09:00', eve: c.eve !== false };
+    }catch(e){}
+    return { time: '09:00', eve: true };
+  }
+  var birthdays = loadBirthdays();
+  var bdayCfg = loadBdayCfg();
+  function saveBirthdays(){ try{ localStorage.setItem(BDAY_KEY, JSON.stringify(birthdays)); }catch(e){} scheduleTaskNotificationsSoon(); }
+  function saveBdayCfg(){ try{ localStorage.setItem(BDAY_CFG_KEY, JSON.stringify(bdayCfg)); }catch(e){} scheduleTaskNotificationsSoon(); }
+  function isLeapYear(y){ return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  /** Date de l'anniversaire pour une année donnée (le 29 février devient le 28 les années non bissextiles). */
+  function birthdayDateInYear(b, year){
+    var d = b.day;
+    if(b.month === 2 && d === 29 && !isLeapYear(year)) d = 28;
+    return new Date(year, b.month - 1, d);
+  }
+  function birthdaysForDate(ds){
+    var y = parseInt(ds.slice(0, 4), 10);
+    return birthdays.filter(function(b){ return toDateStr(birthdayDateInYear(b, y)) === ds; })
+      .map(function(b){ return Object.assign({}, b, { _age: b.year ? (y - b.year) : null }); })
+      .sort(function(a, b){ return a.name.localeCompare(b.name, 'fr'); });
+  }
+  function nextBirthdayOccurrence(b, fromDate){
+    var base = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+    var occ = birthdayDateInYear(b, base.getFullYear());
+    if(occ < base) occ = birthdayDateInYear(b, base.getFullYear() + 1);
+    return occ;
+  }
+  function birthdayChipHtml(b, cls){
+    var ageTag = (b._age && b._age > 0) ? ' <span style="opacity:.65">(' + b._age + ' ans)</span>' : '';
+    var title = 'Anniversaire de ' + b.name + ((b._age && b._age > 0) ? ' — ' + b._age + ' ans' : '');
+    return '<' + cls.tag + ' class="' + cls.name + ' is-birthday" data-bday="' + b.id + '" title="' + escapeHtml(title) + '"' + (cls.style ? ' style="' + cls.style + '"' : '') + '>🎂 ' + escapeHtml(b.name) + ageTag + '</' + cls.tag + '>';
+  }
+  function stopBirthdayClicks(root){
+    root.querySelectorAll('[data-bday]').forEach(function(el){ el.addEventListener('click', function(ev){ ev.stopPropagation(); }); });
+  }
   function getGroup(key){
     for(var i=0;i<GROUPS.length;i++){ if(GROUPS[i].key === key) return GROUPS[i]; }
     return null;
@@ -1690,7 +1789,7 @@ window.addEventListener('error', function(ev){
      EXPORT / IMPORT (backup & migration between devices/apps)
   ================================================================= */
    document.getElementById('export-btn').addEventListener('click', async function(){
-    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES };
+    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES, birthdays: birthdays, birthdayCfg: bdayCfg };
     var json = JSON.stringify(payload, null, 2);
     var filename = 'agenda-sauvegarde-' + todayStr() + '.json';
 
@@ -1759,6 +1858,19 @@ window.addEventListener('error', function(ev){
           CATEGORIES.forEach(function(c){ existingKeys[c.key] = true; });
           incomingCats.forEach(function(c){ if(!existingKeys[c.key]) CATEGORIES.push(c); });
           saveCategories();
+        }
+
+        var incomingBdays = Array.isArray(data.birthdays) ? data.birthdays : [];
+        if(incomingBdays.length){
+          var knownB = {};
+          birthdays.forEach(function(b){ knownB[b.id] = true; });
+          incomingBdays.forEach(function(b){
+            if(!b || typeof b.name !== 'string' || !(b.day >= 1 && b.day <= 31) || !(b.month >= 1 && b.month <= 12)) return;
+            if(!b.id) b.id = uid();
+            if(!knownB[b.id]){ birthdays.push(b); knownB[b.id] = true; }
+          });
+          saveBirthdays();
+          renderBirthdayManager();
         }
 
         saveTasks();
@@ -2407,6 +2519,9 @@ window.addEventListener('error', function(ev){
       var inner = '';
             // --- CORRECTION : Injection des rappels en haut de la colonne du jour ---
       var remindersInner = '<div class="day-reminders-container" style="padding: 4px; display: flex; flex-direction: column; gap: 4px;">';
+      birthdaysForDate(ds).forEach(function(b){
+        remindersInner += birthdayChipHtml(b, { tag:'span', name:'allday-chip', style:'display: inline-flex; width: 100%; box-sizing: border-box;' });
+      });
       tasksForDate(ds).filter(function(t) { return !t.time; }).forEach(function(t) {
         var cat = getCategory(t.category);
         var isReminder = taskType(t) === 'reminder';
@@ -2476,6 +2591,7 @@ window.addEventListener('error', function(ev){
       });
     });
     calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+    stopBirthdayClicks(calendarBody);
 
     if(prevScroll){
       var newGridScroll = calendarBody.querySelector('.grid-scroll');
@@ -2503,10 +2619,13 @@ window.addEventListener('error', function(ev){
         return am - bm;
       });
       var deadlineTasks = deadlineMarkersForDate(ds);
+      var dayBdays = birthdaysForDate(ds);
+      var room = Math.max(0, 2 - Math.min(2, dayBdays.length));
 
       html += '<div class="month-cell' + (muted?' muted':'') + '" data-date="' + ds + '">';
       html += '<span class="month-daynum' + (isToday?' is-today':'') + '" data-goto="' + ds + '">' + d.getDate() + '</span>';
-      var shown = dayTasks.slice(0,2);
+      dayBdays.slice(0, 2).forEach(function(b){ html += birthdayChipHtml(b, { tag:'div', name:'month-chip' }); });
+      var shown = dayTasks.slice(0, room);
       shown.forEach(function(t){
         var cat = getCategory(t.category);
         var isReminder = taskType(t) === 'reminder';
@@ -2514,11 +2633,11 @@ window.addEventListener('error', function(ev){
         var pieTag = (typeof t.progress === 'number') ? ' <span class="pie pie-xs" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' : '';
         html += '<div class="month-chip' + (t.done?' done':'') + (isReminder?' is-reminder':'') + '" style="--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '" data-open="' + t.id + '">' + prefix + escapeHtml(t.title) + pieTag + '</div>';
       });
-      deadlineTasks.slice(0, Math.max(0, 2 - shown.length)).forEach(function(t){
+      deadlineTasks.slice(0, Math.max(0, room - shown.length)).forEach(function(t){
         var cat = getCategory(t.category);
         html += '<div class="month-chip is-deadline" style="--cat:' + cat.color + '" data-open="' + t.id + '">🚩 ' + escapeHtml(t.title) + '</div>';
       });
-      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0,2-shown.length));
+      var extra = (dayTasks.length - shown.length) + Math.max(0, deadlineTasks.length - Math.max(0, room - shown.length)) + Math.max(0, dayBdays.length - 2);
       if(extra > 0){ html += '<div class="month-more">+' + extra + ' de plus</div>'; }
       html += '</div>';
     }
@@ -2541,6 +2660,7 @@ window.addEventListener('error', function(ev){
       });
     });
     calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+    stopBirthdayClicks(calendarBody);
   }
 
   function escapeHtml(s){
@@ -2626,7 +2746,7 @@ window.addEventListener('error', function(ev){
   notifCheckbox.addEventListener('change', function(e){
     if(!e.target.checked){
       localStorage.setItem(NOTIF_KEY, '0');
-      cancelAllScheduledNotifications();
+      cancelAllScheduledNotifications().then(function(){ scheduleTaskNotifications(); });
       return;
     }
 
@@ -2706,40 +2826,101 @@ window.addEventListener('error', function(ev){
     if(notifTimer) clearTimeout(notifTimer);
     notifTimer = setTimeout(scheduleTaskNotifications, 800);
   }
-  /** Reprogramme auprès d'Android le bip de chaque tâche horaire à venir (14 jours).
+  var BDAY_CHANNEL = 'agenda-birthdays-v1';
+  function ensureBirthdayChannel(ln){
+    try{
+      ln.createChannel({
+        id: BDAY_CHANNEL,
+        name: 'Anniversaires',
+        description: 'Rappels d\u2019anniversaire.',
+        importance: 4,
+        visibility: 1,
+        vibration: true
+      });
+    }catch(e){}
+  }
+  /** Notifications d'anniversaire des 90 prochains jours : le jour même (heure choisie) et, au choix, la veille à 18 h. */
+  function birthdayNotifications(now){
+    var out = [], horizon = now + 90 * 86400000;
+    var tp = (bdayCfg.time || '09:00').split(':').map(Number);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    birthdays.forEach(function(b){
+      var occ = nextBirthdayOccurrence(b, today);
+      var age = b.year ? (occ.getFullYear() - b.year) : null;
+      var ds = toDateStr(occ);
+      var at = new Date(occ.getFullYear(), occ.getMonth(), occ.getDate(), tp[0] || 0, tp[1] || 0, 0, 0).getTime();
+      if(at > now + 2000 && at <= horizon){
+        out.push({ at: at, n: {
+          id: notifIdFor('bd:' + b.id + ':' + ds),
+          title: '🎂 Anniversaire de ' + b.name,
+          body: (age && age > 0) ? ('Aujourd\u2019hui : ' + age + ' ans !') : 'C\u2019est son anniversaire aujourd\u2019hui !',
+          channelId: BDAY_CHANNEL,
+          schedule: { at: new Date(at), allowWhileIdle: true }
+        }});
+      }
+      if(bdayCfg.eve){
+        var eveAt = new Date(occ.getFullYear(), occ.getMonth(), occ.getDate() - 1, 18, 0, 0, 0).getTime();
+        if(eveAt > now + 2000 && eveAt <= horizon){
+          out.push({ at: eveAt, n: {
+            id: notifIdFor('bdeve:' + b.id + ':' + ds),
+            title: '🎂 Demain : anniversaire de ' + b.name,
+            body: (age && age > 0) ? ('Pensez à lui souhaiter ses ' + age + ' ans !') : 'Pensez à lui souhaiter bon anniversaire !',
+            channelId: BDAY_CHANNEL,
+            schedule: { at: new Date(eveAt), allowWhileIdle: true }
+          }});
+        }
+      }
+    });
+    out.sort(function(a, b){ return a.at - b.at; });
+    return out.slice(0, 150).map(function(o){ return o.n; });
+  }
+  /** Reprogramme auprès d'Android les bips des tâches horaires à venir (14 jours) et les rappels d'anniversaire (90 jours).
       Android les déclenche lui-même, appli fermée et téléphone verrouillé. */
   function scheduleTaskNotifications(){
     var ln = nativeLocalNotifications();
-    if(!ln || localStorage.getItem(NOTIF_KEY) !== '1') return;
+    if(!ln) return;
+    var tasksOn = localStorage.getItem(NOTIF_KEY) === '1';
+    var bdayOn = localStorage.getItem(BDAY_NOTIF_KEY) === '1';
+    if(!tasksOn && !bdayOn) return;
     cancelAllScheduledNotifications().then(function(){
-      var now = Date.now(), horizon = now + 14 * 86400000, items = [];
-      tasks.forEach(function(t){
-        if(!t.time || !t.date || t.done || t.alert === false) return;
-        var d = parseDateStr(t.date), p = t.time.split(':').map(Number);
-        d.setHours(p[0], p[1], 0, 0);
-        var at = d.getTime();
-        if(at <= now + 2000 || at > horizon) return;
-        items.push({ at: at, t: t });
-      });
-      items.sort(function(a, b){ return a.at - b.at; });
-      items = items.slice(0, 120);
-      if(!items.length) return null;
-      return ln.schedule({ notifications: items.map(function(it){
-        var cat = getCategory(it.t.category);
-        return {
-          id: notifIdFor(it.t.id),
-          title: '▶ ' + it.t.title,
-          body: cat.label + ' · commence maintenant (' + formatDuration(it.t.duration) + ')',
-          channelId: TASK_CHANGE_CHANNEL,
-          schedule: { at: new Date(it.at), allowWhileIdle: true }
-        };
-      }) });
+      var now = Date.now(), horizon = now + 14 * 86400000, items = [], notifs = [];
+      if(tasksOn){
+        tasks.forEach(function(t){
+          if(!t.time || !t.date || t.done || t.alert === false) return;
+          var d = parseDateStr(t.date), p = t.time.split(':').map(Number);
+          d.setHours(p[0], p[1], 0, 0);
+          var at = d.getTime();
+          if(at <= now + 2000 || at > horizon) return;
+          items.push({ at: at, t: t });
+        });
+        items.sort(function(a, b){ return a.at - b.at; });
+        items.slice(0, 120).forEach(function(it){
+          var cat = getCategory(it.t.category);
+          notifs.push({
+            id: notifIdFor(it.t.id),
+            title: '▶ ' + it.t.title,
+            body: cat.label + ' · commence maintenant (' + formatDuration(it.t.duration) + ')',
+            channelId: TASK_CHANGE_CHANNEL,
+            schedule: { at: new Date(it.at), allowWhileIdle: true }
+          });
+        });
+      }
+      if(bdayOn){
+        ensureBirthdayChannel(ln);
+        notifs = notifs.concat(birthdayNotifications(now));
+      }
+      if(!notifs.length) return null;
+      return ln.schedule({ notifications: notifs });
     }).catch(function(){});
   }
   function startupNotifications(){
     var ln = nativeLocalNotifications();
-    if(!ln || localStorage.getItem(NOTIF_KEY) !== '1') return;
-    ensureTaskChangeChannel(ln);
+    if(!ln) return;
+    var tasksOn = localStorage.getItem(NOTIF_KEY) === '1';
+    var bdayOn = localStorage.getItem(BDAY_NOTIF_KEY) === '1';
+    if(!tasksOn && !bdayOn) return;
+    if(tasksOn) ensureTaskChangeChannel(ln);
+    if(bdayOn) ensureBirthdayChannel(ln);
     ensureExactAlarm(ln);
     scheduleTaskNotifications();
   }
@@ -2764,6 +2945,96 @@ window.addEventListener('error', function(ev){
       alert('Test programmé. Verrouillez le téléphone : le bip arrive dans 10 secondes.');
     }).catch(function(err){ alert('Échec : ' + String(err)); });
   });
+
+  /* ---------------- anniversaires : réglages et liste ---------------- */
+  var BDAY_MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function renderBirthdayManager(){
+    var list = document.getElementById('bday-list');
+    if(!list) return;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var rows = birthdays.map(function(b){
+      var occ = nextBirthdayOccurrence(b, today);
+      return { b: b, occ: occ, inDays: Math.round((occ - today) / 86400000) };
+    }).sort(function(x, y){ return (x.occ - y.occ) || x.b.name.localeCompare(y.b.name, 'fr'); });
+    if(!rows.length){
+      list.innerHTML = '<div class="field-hint">Aucun anniversaire pour l\u2019instant.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    rows.forEach(function(r){
+      var age = r.b.year ? (r.occ.getFullYear() - r.b.year) : null;
+      var when = r.inDays === 0 ? 'aujourd\u2019hui 🎉' : (r.inDays === 1 ? 'demain' : 'dans ' + r.inDays + ' j');
+      var meta = r.b.day + ' ' + BDAY_MONTH_NAMES[r.b.month - 1] + ((age && age > 0) ? ' · ' + age + ' ans' : '');
+      var row = document.createElement('div');
+      row.className = 'bday-row';
+      row.innerHTML = '<span>🎂</span><div class="bday-main"><div class="bday-name">' + escapeHtml(r.b.name) + '</div><div class="bday-meta">' + meta + '</div></div>' +
+        '<span class="bday-when' + (r.inDays <= 7 ? ' bday-soon' : '') + '">' + when + '</span>';
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'icon-btn danger'; del.title = 'Supprimer'; del.setAttribute('aria-label', 'Supprimer'); del.textContent = '✕';
+      del.addEventListener('click', function(){
+        if(!confirm('Supprimer l\u2019anniversaire de ' + r.b.name + ' ?')) return;
+        birthdays = birthdays.filter(function(x){ return x.id !== r.b.id; });
+        saveBirthdays(); renderBirthdayManager(); renderAll();
+      });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  (function wireBirthdays(){
+    var nameEl = document.getElementById('bday-name'), dayEl = document.getElementById('bday-day'),
+        monthEl = document.getElementById('bday-month'), yearEl = document.getElementById('bday-year'),
+        notifEl = document.getElementById('bday-notif-enabled'), timeEl = document.getElementById('bday-time'),
+        eveEl = document.getElementById('bday-eve');
+
+    function addBirthday(){
+      var name = nameEl.value.trim(), day = parseInt(dayEl.value, 10), month = parseInt(monthEl.value, 10);
+      var year = yearEl.value.trim() ? parseInt(yearEl.value, 10) : null;
+      if(!name){ nameEl.focus(); return; }
+      if(!month || !day || day < 1 || day > new Date(2000, month, 0).getDate()){ alert('Date invalide : vérifiez le jour et le mois.'); return; }
+      if(year !== null && (isNaN(year) || year < 1900 || year > new Date().getFullYear())){ alert('Année invalide (laissez vide si vous ne la connaissez pas).'); return; }
+      birthdays.push({ id: uid(), name: name, day: day, month: month, year: year || null });
+      saveBirthdays();
+      nameEl.value = ''; dayEl.value = ''; monthEl.value = ''; yearEl.value = '';
+      renderBirthdayManager(); renderAll();
+      nameEl.focus();
+    }
+    document.getElementById('bday-add-btn').addEventListener('click', addBirthday);
+    [nameEl, dayEl, yearEl].forEach(function(el){
+      el.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); addBirthday(); } });
+    });
+
+    notifEl.checked = localStorage.getItem(BDAY_NOTIF_KEY) === '1';
+    timeEl.value = bdayCfg.time;
+    eveEl.checked = !!bdayCfg.eve;
+    timeEl.addEventListener('change', function(){ if(timeEl.value){ bdayCfg.time = timeEl.value; saveBdayCfg(); } });
+    eveEl.addEventListener('change', function(){ bdayCfg.eve = eveEl.checked; saveBdayCfg(); });
+
+    notifEl.addEventListener('change', function(){
+      if(!notifEl.checked){
+        localStorage.setItem(BDAY_NOTIF_KEY, '0');
+        cancelAllScheduledNotifications().then(function(){ scheduleTaskNotifications(); });
+        return;
+      }
+      var ln = nativeLocalNotifications();
+      if(!ln){
+        alert('Les rappels d\u2019anniversaire fonctionnent dans l\u2019appli Android (les anniversaires restent visibles dans le calendrier).');
+        notifEl.checked = false;
+        return;
+      }
+      ln.requestPermissions().then(function(res){
+        if(res && res.display === 'granted'){
+          ensureBirthdayChannel(ln);
+          ensureExactAlarm(ln);
+          localStorage.setItem(BDAY_NOTIF_KEY, '1');
+          scheduleTaskNotifications();
+        } else {
+          notifEl.checked = false;
+          localStorage.setItem(BDAY_NOTIF_KEY, '0');
+        }
+      }).catch(function(){ notifEl.checked = false; });
+    });
+  })();
 
   /* ---------------- live clock: refreshes the now-line, progress bars, and fires start-of-task alerts ---------------- */
   var notifiedThisSession = {};
@@ -3641,6 +3912,7 @@ window.addEventListener('error', function(ev){
   safeInit('jours', buildWeekdaySelect);
   safeInit('catégories (réglages)', renderCategoryManager);
   safeInit('groupes (réglages)', renderGroupManager);
+  safeInit('anniversaires (réglages)', renderBirthdayManager);
   safeInit('onglets', applyStartupParams);
   safeInit('affichage', renderAll);
   safeInit('widget', syncTasksToWidget);
