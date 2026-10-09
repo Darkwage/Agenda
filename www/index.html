@@ -711,6 +711,27 @@
   .pl-error{ color:var(--danger); font-size:12.5px; margin:0 0 8px; }
   .pl-actions{ display:flex; gap:8px; margin-top:12px; }
   .pl-actions .btn-primary{ flex:1; }
+
+  /* ---------------- Planificateur v2 : pause, exceptions, replanification, déplacement ---------------- */
+  .pl-batch{ flex-wrap:wrap; }
+  .pl-batch-actions{ display:flex; gap:6px; flex:none; }
+  .pl-exc{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:3px 4px 3px 10px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
+  .pl-exc button{ width:20px; height:20px; border-radius:50%; border:none; background:var(--paper-deep); color:var(--ink-soft); font-size:11px; }
+  .pl-exc-form{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+  .pl-exc-form input[type=date]{ flex:1 1 130px; width:auto; }
+  .pl-exc-form select.select-input{ flex:1 1 140px; width:auto; }
+  .pl-exc-times{ display:none; gap:6px; flex:1 1 100%; }
+  .pl-exc-times.is-on{ display:flex; }
+  .pl-lunch-times{ display:flex; gap:8px; margin-top:8px; }
+
+  /* Déplacement à la main des tâches planifiées */
+  .task-block.is-planner{ cursor:grab; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .task-block.is-drag-origin{ opacity:.3; }
+  .task-block.pl-ghost{ cursor:grabbing; box-shadow:0 8px 22px rgba(0,0,0,.28); opacity:.95; margin:0; }
+  .day-track.pl-drop-target{ background-color:rgba(14,154,167,.09); }
+  .pl-drag-tip{ position:fixed; z-index:310; pointer-events:none; background:var(--ink); color:#fff; font-family:var(--font-mono); font-size:11px; padding:4px 8px; border-radius:6px; white-space:nowrap; }
+
+  #planner-overlay .modal-card{ max-height:92vh; max-height:92dvh; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 </style>
 </head>
 <body>
@@ -1006,6 +1027,13 @@
         <div class="field-hint">Les dates ajoutées créeront de nouvelles occurrences identiques.</div>
       </div>
 
+      <div class="field checkbox-field" id="locked-field" style="display:none;">
+        <label class="checkbox-row">
+          <input type="checkbox" id="f-locked">
+          <span>📌 Garder cette tâche à sa place lors d'une replanification <span class="field-hint-inline">(automatique si vous la déplacez)</span></span>
+        </label>
+      </div>
+
       <button type="submit" class="btn-primary" id="submit-btn" style="margin-top:6px;">Ajouter la tâche</button>
       <button type="button" class="btn-delete" id="modal-delete-btn" style="display:none;">🗑 Supprimer cette tâche</button>
     </form>
@@ -1036,6 +1064,34 @@
         <label class="field-label">Mes disponibilités (semaine type)</label>
         <div id="pl-avail"></div>
         <div class="field-hint">Les tâches et rendez-vous déjà présents dans l'agenda (avec leur temps de trajet) sont évités automatiquement.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Pause déjeuner</label>
+        <label class="checkbox-row"><input type="checkbox" id="pl-lunch-on"><span>Ne rien planifier pendant la pause</span></label>
+        <div class="pl-lunch-times">
+          <input type="time" id="pl-lunch-start" value="12:00" aria-label="Début de la pause">
+          <input type="time" id="pl-lunch-end" value="13:30" aria-label="Fin de la pause">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Exceptions ponctuelles</label>
+        <div class="chip-row" id="pl-exc-list"></div>
+        <div class="pl-exc-form">
+          <input type="date" id="pl-exc-date" aria-label="Date de l'exception">
+          <select id="pl-exc-type" class="select-input" aria-label="Type d'exception">
+            <option value="off">Indisponible</option>
+            <option value="custom">Horaires spécifiques</option>
+          </select>
+          <div class="pl-exc-times" id="pl-exc-times">
+            <input type="time" id="pl-exc-start" value="09:00" aria-label="Début">
+            <input type="time" id="pl-exc-end" value="12:00" aria-label="Fin">
+          </div>
+          <button type="button" class="btn-ghost" id="pl-exc-add">Ajouter</button>
+        </div>
+        <div class="pl-error" id="pl-exc-error" style="margin:6px 0 0;"></div>
+        <div class="field-hint">« Indisponible » bloque la journée. « Horaires spécifiques » remplace les horaires habituels de ce jour (pause comprise), même un jour désactivé comme le week-end.</div>
       </div>
 
       <div class="field-row">
@@ -1201,7 +1257,10 @@ window.addEventListener('error', function(ev){
   var PLANNER_DEFAULT_COLOR = '#0E9AA7';
   var PLANNER_SPEED_MIN = { 1:30, 2:90, 3:180 }; // Rapide / Moyenne / Longue (minutes)
   var PLANNER_MIN_CHUNK = 30;
+  var TIME_RE = /^\d{2}:\d{2}$/, DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   var plannerCfg = loadPlannerCfg();
+  var PLANNER_BATCH_KEY = 'agenda_planner_batches_v1';
+  var plannerBatches = loadPlannerBatches();
   // Programme de révisions : une catégorie « virtuelle » par matière (couleur propre à la matière)
   var REV_CATS_KEY = 'agenda_revision_cats_v1';
   var REV_PREFIX = '_rev_';
@@ -1789,7 +1848,7 @@ window.addEventListener('error', function(ev){
      EXPORT / IMPORT (backup & migration between devices/apps)
   ================================================================= */
    document.getElementById('export-btn').addEventListener('click', async function(){
-    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES, birthdays: birthdays, birthdayCfg: bdayCfg };
+    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES, birthdays: birthdays, birthdayCfg: bdayCfg, planner: { batches: plannerBatches } };
     var json = JSON.stringify(payload, null, 2);
     var filename = 'agenda-sauvegarde-' + todayStr() + '.json';
 
@@ -1873,6 +1932,10 @@ window.addEventListener('error', function(ev){
           renderBirthdayManager();
         }
 
+        if(data.planner && data.planner.batches && typeof data.planner.batches === 'object'){
+          Object.keys(data.planner.batches).forEach(function(k){ if(!plannerBatches[k]) plannerBatches[k] = data.planner.batches[k]; });
+          savePlannerBatches();
+        }
         saveTasks();
         buildCategorySelect();
         buildCategoryFilters();
@@ -2034,6 +2097,8 @@ window.addEventListener('error', function(ev){
       document.getElementById('f-travel-after').value = prefill.travelAfter || 0;
       selectedCategory = prefill.category;
       recurrenceField.style.display = 'none';
+      document.getElementById('locked-field').style.display = (prefill.source === 'planner') ? '' : 'none';
+      document.getElementById('f-locked').checked = !!prefill.locked;
       document.getElementById('modal-delete-btn').style.display = '';
       // Extra dates can extend an existing series - or turn a one-off task
       // into a series - straight from whichever occurrence is open.
@@ -2067,6 +2132,7 @@ window.addEventListener('error', function(ev){
       seriesBanner.style.display = 'none';
       document.getElementById('modal-delete-btn').style.display = 'none';
       document.getElementById('extra-dates-field').style.display = 'none';
+      document.getElementById('locked-field').style.display = 'none';
     }
 
     buildCategorySelect();
@@ -2130,7 +2196,7 @@ window.addEventListener('error', function(ev){
   /* ---------------- duplicate task ---------------- */
   function duplicateTask(t){
     openModal('create', {
-      title: t.title + ' (copie)', category: t.category, date: t.date, time: t.time,
+      title: t.title + ' (copie)', category: (t.category === PLANNER_KEY ? '' : t.category), date: t.date, time: t.time,
       duration: t.duration, deadline: t.deadline, type: taskType(t), endDate: t.endDate,
       progress: t.progress, alert: t.alert, travelBefore: t.travelBefore, travelAfter: t.travelAfter
     });
@@ -2253,6 +2319,7 @@ window.addEventListener('error', function(ev){
     if(editingId){
       var t = tasks.find(function(x){ return x.id === editingId; });
       if(t){
+        var plMoved = (t.source === 'planner') && (t.date !== date || (t.time || '') !== (time || ''));
         t.title = title; t.date = date; t.time = time; t.duration = duration;
         t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate;
         t.reminder = isReminder ? true : undefined;
@@ -2260,6 +2327,10 @@ window.addEventListener('error', function(ev){
         if(travelBefore) t.travelBefore = travelBefore; else delete t.travelBefore;
         if(travelAfter) t.travelAfter = travelAfter; else delete t.travelAfter;
         if(progress === undefined) delete t.progress; else t.progress = progress;
+        if(t.source === 'planner'){
+          // Déplacée à la main (ou case cochée) : fixée, donc conservée par une replanification
+          if(plMoved || document.getElementById('f-locked').checked) t.locked = true; else delete t.locked;
+        }
 
         // Adding dates while editing extends the series. If this task wasn't
         // part of one yet, it becomes the first member of a new series so the
@@ -2558,8 +2629,8 @@ window.addEventListener('error', function(ev){
         };
         if(t.travelBefore) inner += travelHtml(t._rs - t.travelBefore, t._rs, t.travelBefore + ' min');
         if(t.travelAfter) inner += travelHtml(t._rs + t.duration, t._rs + t.duration + t.travelAfter, t.travelAfter + ' min');
-        inner += '<div class="task-block' + (t.done?' done':'') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
-          '<div class="tb-title">' + doneMark + flag + escapeHtml(t.title) + '</div>' +
+        inner += '<div class="task-block' + (t.done?' done':'') + ((t.source === 'planner' && !t.done) ? ' is-planner' : '') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
+          '<div class="tb-title">' + doneMark + (t.locked ? '\uD83D\uDCCC ' : '') + flag + escapeHtml(t.title) + '</div>' +
           '<div class="tb-time">' + t.time + ' · ' + formatDuration(t.duration) + '</div>' +
           progressBar +
         '</div>';
@@ -2591,6 +2662,7 @@ window.addEventListener('error', function(ev){
       });
     });
     calendarBody.querySelectorAll('[data-open]').forEach(wireOpenElement);
+    plWireDrag();
     stopBirthdayClicks(calendarBody);
 
     if(prevScroll){
@@ -3050,7 +3122,7 @@ window.addEventListener('error', function(ev){
         }
       });
     }
-    renderAll();
+    if(!(plDrag && plDrag.active)) renderAll();
   }
   setInterval(liveTick, 60000);
 
@@ -3107,34 +3179,53 @@ window.addEventListener('error', function(ev){
     });
     return free;
   }
-  // Créneaux libres = disponibilités déclarées − tâches/rendez-vous déjà posés
+  // Fenêtre de travail d'un jour : exception ponctuelle > horaires habituels du jour de la semaine
+  function plannerDayWindow(cfg, d, ds){
+    var ex = cfg.exceptions && cfg.exceptions[ds];
+    if(ex){
+      if(ex.off) return null;
+      return { s: timeToMinutes(ex.start), e: timeToMinutes(ex.end), lunch: false };
+    }
+    var a = cfg.avail[d.getDay()];
+    if(!a || !a.on) return null;
+    return { s: timeToMinutes(a.start), e: timeToMinutes(a.end), lunch: true };
+  }
+  // Créneaux libres = disponibilités − pause déjeuner − tâches/rendez-vous déjà posés
   function plannerFreeSlots(cfg){
     var slots = [];
     var d = parseDateStr(cfg.startDate), last = parseDateStr(cfg.deadline), guard = 0;
+    var ls = null, le = null;
+    if(cfg.lunch && cfg.lunch.on){
+      ls = timeToMinutes(cfg.lunch.start); le = timeToMinutes(cfg.lunch.end);
+      if(ls === null || le === null || isNaN(ls) || isNaN(le) || le <= ls){ ls = le = null; }
+    }
     while(d <= last && guard++ < 400){
-      var ds = toDateStr(d), a = cfg.avail[d.getDay()];
-      if(a && a.on){
-        var s = timeToMinutes(a.start), e = timeToMinutes(a.end);
-        if(s !== null && e !== null){
-          if(ds === cfg.startDate && cfg.nowMinutes != null) s = Math.max(s, Math.ceil(cfg.nowMinutes / 15) * 15);
-          if(e - s >= PLANNER_MIN_CHUNK){
-            plannerSubtract([s, e], plannerDayBusy(cfg.tasks, ds)).forEach(function(f){
+      var ds = toDateStr(d), w = plannerDayWindow(cfg, d, ds);
+      if(w && w.s !== null && w.e !== null && !isNaN(w.s) && !isNaN(w.e)){
+        var s = w.s;
+        if(ds === cfg.startDate && cfg.nowMinutes != null) s = Math.max(s, Math.ceil(cfg.nowMinutes / 15) * 15);
+        if(w.e - s >= PLANNER_MIN_CHUNK){
+          var pieces = (w.lunch && ls !== null) ? plannerSubtract([s, w.e], [[ls, le]]) : [[s, w.e]];
+          var busy = plannerDayBusy(cfg.tasks, ds);
+          pieces.forEach(function(p){
+            plannerSubtract(p, busy).forEach(function(f){
               if(f[1] - f[0] >= PLANNER_MIN_CHUNK) slots.push({ date:ds, start:f[0], end:f[1] });
             });
-          }
+          });
         }
       }
       d = addDays(d, 1);
     }
     return slots;
   }
-  // items : [{title, difficulty 1-3, speed 1-3, importance 1-3}]
+  // items : [{title, difficulty 1-3, speed 1-3, importance 1-3, minutes?}]  (minutes = durée restante imposée)
   function plannerBuildPlan(items, cfg){
     var slots = plannerFreeSlots(cfg);
     var capMin = cfg.maxPerDay > 0 ? cfg.maxPerDay : Infinity;
     var load = {};
     var order = items.map(function(it, i){
-      return { idx:i, item:it, minutes: PLANNER_SPEED_MIN[it.speed] || 90, score: it.importance * 3 + it.difficulty };
+      var mins = (typeof it.minutes === 'number' && it.minutes > 0) ? it.minutes : (PLANNER_SPEED_MIN[it.speed] || 90);
+      return { idx:i, item:it, minutes: mins, score: it.importance * 3 + it.difficulty };
     });
     // Les plus prioritaires d'abord : importance, puis difficulté, puis durée la plus longue
     order.sort(function(a, b){ return (b.score - a.score) || (b.minutes - a.minutes) || (a.idx - b.idx); });
@@ -3191,14 +3282,20 @@ window.addEventListener('error', function(ev){
   }
   /*PLANNER-CORE-END*/
 
-  /* ---- Planificateur : réglages mémorisés (disponibilités, plafond/jour, couleur) ---- */
+  /* ---- Planificateur : réglages mémorisés ---- */
+  var TIME_RE = /^\d{2}:\d{2}$/, DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   function plannerDefaultAvail(){
     var a = {};
     for(var d = 0; d < 7; d++) a[d] = { on: (d >= 1 && d <= 5), start:'09:00', end:'18:00' };
     return a;
   }
   function loadPlannerCfg(){
-    var cfg = { avail: plannerDefaultAvail(), maxPerDay: 240, color: PLANNER_DEFAULT_COLOR };
+    var cfg = {
+      avail: plannerDefaultAvail(),
+      lunch: { on:true, start:'12:00', end:'13:30' },
+      exceptions: [],
+      maxPerDay: 240, color: PLANNER_DEFAULT_COLOR
+    };
     try{
       var raw = JSON.parse(localStorage.getItem(PLANNER_CFG_KEY) || 'null');
       if(raw && typeof raw === 'object'){
@@ -3206,13 +3303,23 @@ window.addEventListener('error', function(ev){
           for(var d = 0; d < 7; d++){
             var a = raw.avail[d];
             if(a && typeof a === 'object'){
-              cfg.avail[d] = {
-                on: !!a.on,
-                start: /^\d{2}:\d{2}$/.test(a.start) ? a.start : '09:00',
-                end: /^\d{2}:\d{2}$/.test(a.end) ? a.end : '18:00'
-              };
+              cfg.avail[d] = { on: !!a.on, start: TIME_RE.test(a.start) ? a.start : '09:00', end: TIME_RE.test(a.end) ? a.end : '18:00' };
             }
           }
+        }
+        if(raw.lunch && typeof raw.lunch === 'object'){
+          cfg.lunch = {
+            on: !!raw.lunch.on,
+            start: TIME_RE.test(raw.lunch.start) ? raw.lunch.start : '12:00',
+            end: TIME_RE.test(raw.lunch.end) ? raw.lunch.end : '13:30'
+          };
+        }
+        if(Array.isArray(raw.exceptions)){
+          var today = todayStr();
+          cfg.exceptions = raw.exceptions.filter(function(x){
+            if(!x || typeof x !== 'object' || !DATE_RE.test(x.date) || x.date < today) return false; // exceptions passées : purgées
+            return x.off === true || (TIME_RE.test(x.start) && TIME_RE.test(x.end) && x.start < x.end);
+          }).map(function(x){ return x.off === true ? { date:x.date, off:true } : { date:x.date, start:x.start, end:x.end }; });
         }
         if(typeof raw.maxPerDay === 'number' && raw.maxPerDay >= 0) cfg.maxPerDay = raw.maxPerDay;
         if(typeof raw.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.color)) cfg.color = raw.color;
@@ -3222,14 +3329,25 @@ window.addEventListener('error', function(ev){
   }
   function savePlannerCfg(){ try{ localStorage.setItem(PLANNER_CFG_KEY, JSON.stringify(plannerCfg)); }catch(e){} }
 
+  // Lots planifiés mémorisés (tâches saisies + échéance) pour pouvoir les replanifier
+  function loadPlannerBatches(){
+    try{
+      var o = JSON.parse(localStorage.getItem(PLANNER_BATCH_KEY) || '{}');
+      return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+    }catch(e){ return {}; }
+  }
+  function savePlannerBatches(){ try{ localStorage.setItem(PLANNER_BATCH_KEY, JSON.stringify(plannerBatches)); }catch(e){} }
+
   /* ---- Planificateur : interface ---- */
   var PL_DAY_NAMES = { 1:'Lundi', 2:'Mardi', 3:'Mercredi', 4:'Jeudi', 5:'Vendredi', 6:'Samedi', 0:'Dimanche' };
   var PL_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
   var plOverlay = document.getElementById('planner-overlay');
-  var plItems = [];
+  var plDraft = [plNewItem()];   // brouillon d'un nouveau lot
+  var plItems = plDraft;
+  var plReplanId = null;         // id du lot en cours de replanification (sinon null)
   var plPlan = null;
 
-  function plNewItem(){ return { title:'', difficulty:2, speed:2, importance:2 }; }
+  function plNewItem(){ return { pid: uid(), title:'', difficulty:2, speed:2, importance:2 }; }
   function plMinToTime(m){ return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
 
   function plRenderItems(){
@@ -3291,26 +3409,120 @@ window.addEventListener('error', function(ev){
     });
   }
 
+  /* pause déjeuner */
+  function plSyncLunchInputs(){
+    var on = document.getElementById('pl-lunch-on').checked;
+    document.getElementById('pl-lunch-start').disabled = !on;
+    document.getElementById('pl-lunch-end').disabled = !on;
+  }
+  function plLoadLunch(){
+    document.getElementById('pl-lunch-on').checked = !!plannerCfg.lunch.on;
+    document.getElementById('pl-lunch-start').value = plannerCfg.lunch.start;
+    document.getElementById('pl-lunch-end').value = plannerCfg.lunch.end;
+    plSyncLunchInputs();
+  }
+  function plReadLunch(){
+    var s = document.getElementById('pl-lunch-start').value, e = document.getElementById('pl-lunch-end').value;
+    plannerCfg.lunch.on = document.getElementById('pl-lunch-on').checked;
+    if(TIME_RE.test(s)) plannerCfg.lunch.start = s;
+    if(TIME_RE.test(e)) plannerCfg.lunch.end = e;
+  }
+  ['pl-lunch-on', 'pl-lunch-start', 'pl-lunch-end'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', function(){ plReadLunch(); plSyncLunchInputs(); savePlannerCfg(); });
+  });
+
+  /* exceptions ponctuelles */
+  function plRenderExceptions(){
+    var wrap = document.getElementById('pl-exc-list');
+    wrap.innerHTML = '';
+    if(!plannerCfg.exceptions.length){
+      var none = document.createElement('span'); none.className = 'field-hint'; none.style.margin = '0'; none.textContent = 'Aucune exception.';
+      wrap.appendChild(none);
+      return;
+    }
+    plannerCfg.exceptions.forEach(function(ex){
+      var d = parseDateStr(ex.date);
+      var pill = document.createElement('span'); pill.className = 'pl-exc';
+      pill.appendChild(document.createTextNode(fmtShortDay(d) + ' ' + fmtShort(d) + ' · ' + (ex.off ? 'indisponible' : ex.start + '–' + ex.end)));
+      var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Retirer cette exception'); x.textContent = '✕';
+      x.addEventListener('click', function(){
+        plannerCfg.exceptions = plannerCfg.exceptions.filter(function(e){ return e.date !== ex.date; });
+        savePlannerCfg(); plRenderExceptions();
+      });
+      pill.appendChild(x); wrap.appendChild(pill);
+    });
+  }
+  document.getElementById('pl-exc-type').addEventListener('change', function(){
+    document.getElementById('pl-exc-times').classList.toggle('is-on', this.value === 'custom');
+  });
+  document.getElementById('pl-exc-add').addEventListener('click', function(){
+    var err = document.getElementById('pl-exc-error');
+    err.textContent = '';
+    var date = document.getElementById('pl-exc-date').value;
+    var type = document.getElementById('pl-exc-type').value;
+    if(!date || date < todayStr()){ err.textContent = 'Choisissez une date (aujourd\u2019hui ou plus tard).'; return; }
+    var ex;
+    if(type === 'off'){ ex = { date:date, off:true }; }
+    else {
+      var s = document.getElementById('pl-exc-start').value, e = document.getElementById('pl-exc-end').value;
+      if(!TIME_RE.test(s) || !TIME_RE.test(e) || s >= e){ err.textContent = 'L\u2019heure de fin doit être après l\u2019heure de début.'; return; }
+      ex = { date:date, start:s, end:e };
+    }
+    plannerCfg.exceptions = plannerCfg.exceptions.filter(function(x){ return x.date !== date; }).concat([ex]);
+    plannerCfg.exceptions.sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+    savePlannerCfg();
+    document.getElementById('pl-exc-date').value = '';
+    plRenderExceptions();
+  });
+
   function plShowStep(name){
     document.getElementById('planner-step-form').style.display = (name === 'form') ? '' : 'none';
     document.getElementById('planner-step-preview').style.display = (name === 'preview') ? '' : 'none';
   }
-  function openPlanner(){
-    if(!plItems.length) plItems.push(plNewItem());
+  function openPlanner(batchId){
+    var meta = batchId ? plannerBatches[batchId] : null;
     var dl = document.getElementById('pl-deadline');
     dl.min = todayStr();
-    if(!dl.value || dl.value < todayStr()) dl.value = toDateStr(addDays(new Date(), 14));
+    plReplanId = meta ? batchId : null;
+    if(meta){
+      plItems = (meta.items || []).map(function(it){
+        return { pid: it.pid || uid(), title: it.title || '', difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2 };
+      });
+      if(!plItems.length) plItems.push(plNewItem());
+      dl.value = (meta.deadline && meta.deadline >= todayStr()) ? meta.deadline : '';
+      document.getElementById('planner-title').textContent = 'Replanifier · ' + (meta.label || 'lot');
+      document.getElementById('pl-generate').textContent = 'Recalculer le planning';
+      document.getElementById('pl-confirm').textContent = 'Remplacer dans le calendrier';
+    } else {
+      plItems = plDraft;
+      if(!plItems.length) plItems.push(plNewItem());
+      if(!dl.value || dl.value < todayStr()) dl.value = toDateStr(addDays(new Date(), 14));
+      document.getElementById('planner-title').textContent = 'Planificateur';
+      document.getElementById('pl-generate').textContent = 'Générer le planning';
+      document.getElementById('pl-confirm').textContent = 'Ajouter au calendrier';
+    }
     document.getElementById('pl-maxday').value = plannerCfg.maxPerDay > 0 ? (plannerCfg.maxPerDay / 60) : '';
     document.getElementById('pl-color').value = plannerCfg.color;
     document.getElementById('pl-error').textContent = '';
+    document.getElementById('pl-exc-error').textContent = '';
+    document.getElementById('pl-exc-date').min = todayStr();
     plRenderItems();
     plRenderAvail();
+    plLoadLunch();
+    plRenderExceptions();
     plShowStep('form');
     plOverlay.classList.add('is-open');
   }
   function closePlanner(){ plOverlay.classList.remove('is-open'); }
 
-  document.getElementById('planner-open-btn').addEventListener('click', openPlanner);
+  // Mobile : quand le clavier s'ouvre, garder le champ en cours de saisie visible dans la fenêtre
+  plOverlay.addEventListener('focusin', function(e){
+    var el = e.target;
+    if(el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){
+      setTimeout(function(){ try{ el.scrollIntoView({ block:'center', behavior:'smooth' }); }catch(err){} }, 350);
+    }
+  });
+  document.getElementById('planner-open-btn').addEventListener('click', function(){ openPlanner(); });
   document.getElementById('planner-close').addEventListener('click', closePlanner);
   plOverlay.addEventListener('click', function(e){ if(e.target === plOverlay) closePlanner(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && plOverlay.classList.contains('is-open')) closePlanner(); });
@@ -3334,19 +3546,50 @@ window.addEventListener('error', function(ev){
     err.textContent = '';
     var deadline = document.getElementById('pl-deadline').value;
     var items = plItems.filter(function(it){ return it.title.trim(); }).map(function(it){
-      return { title: it.title.trim(), difficulty: it.difficulty, speed: it.speed, importance: it.importance };
+      return { pid: it.pid, title: it.title.trim(), difficulty: it.difficulty, speed: it.speed, importance: it.importance };
     });
     if(!deadline || deadline < todayStr()){ err.textContent = 'Choisissez une échéance (aujourd\u2019hui ou plus tard).'; return; }
     if(!items.length){ err.textContent = 'Ajoutez au moins une tâche avec un titre.'; return; }
-    if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; })){ err.textContent = 'Cochez au moins un jour de disponibilité.'; return; }
+    if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; }) && !plannerCfg.exceptions.some(function(x){ return !x.off; })){
+      err.textContent = 'Cochez au moins un jour de disponibilité.'; return;
+    }
     var h = parseFloat(document.getElementById('pl-maxday').value);
     plannerCfg.maxPerDay = h > 0 ? Math.round(h * 60) : 0;
+    plReadLunch();
     savePlannerCfg();
-    plPlan = plannerBuildPlan(items, {
-      avail: plannerCfg.avail, startDate: todayStr(), nowMinutes: nowMinutes(),
-      deadline: deadline, tasks: tasks, maxPerDay: plannerCfg.maxPerDay
+
+    var exMap = {};
+    plannerCfg.exceptions.forEach(function(x){ exMap[x.date] = x; });
+    var busyTasks = tasks, planItems = items, replan = null;
+
+    if(plReplanId){
+      // Les blocs terminés ou fixés à la main sont conservés (et comptent comme du travail déjà fait) ;
+      // les autres sont retirés pour libérer leurs créneaux et recalculés.
+      var batchTasks = tasks.filter(function(t){ return t.source === 'planner' && t.plannerBatchId === plReplanId; });
+      var removable = batchTasks.filter(function(t){ return !t.done && !t.locked; });
+      var kept = batchTasks.filter(function(t){ return t.done || t.locked; });
+      var covered = {}, removeIds = {};
+      kept.forEach(function(t){ covered[t.plannerItemId] = (covered[t.plannerItemId] || 0) + (t.duration || 0); });
+      removable.forEach(function(t){ removeIds[t.id] = true; });
+      busyTasks = tasks.filter(function(t){ return !removeIds[t.id]; });
+      planItems = [];
+      items.forEach(function(it){
+        var rem = (PLANNER_SPEED_MIN[it.speed] || 90) - (covered[it.pid] || 0);
+        if(rem > 0) planItems.push(Object.assign({}, it, { minutes: rem }));
+      });
+      if(!planItems.length){ err.textContent = 'Rien à replanifier : tout est déjà terminé ou fixé à la main.'; return; }
+      replan = { id: plReplanId, removeIds: removeIds, removedCount: removable.length, keptCount: kept.length };
+    }
+
+    plPlan = plannerBuildPlan(planItems, {
+      avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: exMap,
+      startDate: todayStr(), nowMinutes: nowMinutes(),
+      deadline: deadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay
     });
     plPlan.deadline = deadline;
+    plPlan.items = planItems;
+    plPlan.allItems = items;
+    plPlan.replan = replan;
     plShowPreview();
   });
 
@@ -3365,6 +3608,9 @@ window.addEventListener('error', function(ev){
     } else {
       sum.className = 'pl-note warn';
       sum.textContent = 'Il manque environ ' + formatDuration(p.missingMin) + ' de temps libre avant le ' + dlText + '. Repoussez l\u2019échéance, élargissez vos disponibilités ou retirez des tâches peu importantes.';
+    }
+    if(p.replan){
+      sum.textContent += ' Replanification : ' + p.replan.removedCount + ' bloc(s) remplacé(s), ' + p.replan.keptCount + ' conservé(s) (terminés ou fixés à la main).';
     }
     var lastDate = '';
     p.blocks.forEach(function(b){
@@ -3389,17 +3635,34 @@ window.addEventListener('error', function(ev){
 
   document.getElementById('pl-confirm').addEventListener('click', function(){
     if(!plPlan || !plPlan.blocks.length) return;
-    var batchId = uid(), label = 'Lot du ' + fmtShort(new Date());
+    var batchId, label;
+    if(plPlan.replan){
+      var rm = plPlan.replan.removeIds;
+      tasks = tasks.filter(function(t){ return !rm[t.id]; });
+      batchId = plPlan.replan.id;
+      label = (plannerBatches[batchId] && plannerBatches[batchId].label) || ('Lot du ' + fmtShort(new Date()));
+    } else {
+      batchId = uid();
+      label = 'Lot du ' + fmtShort(new Date());
+    }
     plPlan.blocks.forEach(function(b){
       tasks.push({
         id: uid(), title: b.title + (b.parts > 1 ? ' (' + b.part + '/' + b.parts + ')' : ''),
         category: PLANNER_KEY, date: b.date, time: plMinToTime(b.start), duration: b.duration,
         deadline: '', endDate: '', done: false,
-        source: 'planner', plannerBatchId: batchId, plannerBatchLabel: label
+        source: 'planner', plannerBatchId: batchId, plannerBatchLabel: label,
+        plannerItemId: plPlan.items[b.idx].pid
       });
     });
+    plannerBatches[batchId] = {
+      label: label, deadline: plPlan.deadline,
+      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, difficulty:it.difficulty, speed:it.speed, importance:it.importance }; })
+    };
+    savePlannerBatches();
     currentDate = parseDateStr(plPlan.blocks[0].date);
-    plItems = [plNewItem()];
+    if(!plPlan.replan) plDraft = [plNewItem()];
+    plItems = plDraft;
+    plReplanId = null;
     plPlan = null;
     saveTasks();
     closePlanner();
@@ -3424,17 +3687,184 @@ window.addEventListener('error', function(ev){
       var row = document.createElement('div'); row.className = 'pl-batch';
       var txt = document.createElement('span');
       txt.textContent = b.label + ' · ' + b.count + ' bloc' + (b.count > 1 ? 's' : '') + ' · jusqu\u2019au ' + fmtShort(parseDateStr(b.last));
+      var acts = document.createElement('span'); acts.className = 'pl-batch-actions';
+      if(plannerBatches[b.id]){
+        var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn-ghost'; rb.textContent = 'Replanifier';
+        rb.addEventListener('click', function(){ openPlanner(b.id); });
+        acts.appendChild(rb);
+      }
       var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-ghost'; btn.textContent = 'Supprimer';
       btn.addEventListener('click', function(){
         if(!confirm('Supprimer les ' + b.count + ' bloc(s) non terminés de ce lot ?')) return;
         tasks = tasks.filter(function(t){ return !(t.source === 'planner' && t.plannerBatchId === b.id && !t.done); });
+        if(!tasks.some(function(t){ return t.plannerBatchId === b.id; })){ delete plannerBatches[b.id]; savePlannerBatches(); }
         saveTasks();
         renderAll();
       });
-      row.appendChild(txt); row.appendChild(btn);
+      acts.appendChild(btn);
+      row.appendChild(txt); row.appendChild(acts);
       wrap.appendChild(row);
     });
   }
+
+  /* ---- Déplacement à la main d'une tâche planifiée (glisser-déposer) ----
+     Souris : on saisit le bloc et on le fait glisser. Tactile : appui long (≈ 0,35 s), puis glisser.
+     Le bloc se cale sur 15 min ; aux bords, le calendrier défile. Un bloc déplacé est « fixé » (📌) :
+     une replanification le conserve. */
+  var plDrag = null, plDragJustEnded = false;
+  var PL_LONGPRESS_MS = 350, PL_SNAP = 15;
+
+  function plWireDrag(){
+    calendarBody.querySelectorAll('.task-block.is-planner').forEach(function(block){
+      block.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+      block.addEventListener('pointerdown', function(e){ plDragPointerDown(e, block); });
+    });
+  }
+  function plDragPointerDown(e, block){
+    if(plDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    var t = tasks.find(function(x){ return x.id === block.dataset.open; });
+    if(!t) return;
+    var st = { block:block, task:t, id:e.pointerId, startX:e.clientX, startY:e.clientY, x:e.clientX, y:e.clientY,
+               active:false, timer:null, raf:0, rect:block.getBoundingClientRect(), touch:(e.pointerType !== 'mouse'),
+               ghost:null, tip:null, track:null };
+    plDrag = st;
+    if(st.touch) st.timer = setTimeout(function(){ plDragBegin(st); }, PL_LONGPRESS_MS);
+    document.addEventListener('pointermove', plDragMove);
+    document.addEventListener('pointerup', plDragEnd);
+    document.addEventListener('pointercancel', plDragAbort);
+  }
+  function plDragBegin(st){
+    if(plDrag !== st || st.active) return;
+    st.active = true;
+    clearTimeout(st.timer);
+    var g = st.block.cloneNode(true);
+    g.removeAttribute('data-open');
+    g.classList.add('pl-ghost');
+    g.style.position = 'fixed'; g.style.zIndex = '300'; g.style.pointerEvents = 'none';
+    g.style.left = st.rect.left + 'px'; g.style.top = st.rect.top + 'px';
+    g.style.width = st.rect.width + 'px'; g.style.height = st.rect.height + 'px';
+    document.body.appendChild(g);
+    st.ghost = g;
+    var tip = document.createElement('div'); tip.className = 'pl-drag-tip';
+    document.body.appendChild(tip);
+    st.tip = tip;
+    st.block.classList.add('is-drag-origin');
+    document.body.style.userSelect = 'none';
+    try{ if(navigator.vibrate) navigator.vibrate(15); }catch(err){}
+    plDragUpdate(st);
+    plDragLoop(st);
+  }
+  function plDragMove(e){
+    var st = plDrag;
+    if(!st || e.pointerId !== st.id) return;
+    st.x = e.clientX; st.y = e.clientY;
+    if(!st.active){
+      var dist = Math.sqrt(Math.pow(st.x - st.startX, 2) + Math.pow(st.y - st.startY, 2));
+      if(st.touch){ if(dist > 10) plDragAbort(); }   // le doigt a bougé avant l'appui long : c'est un défilement
+      else if(dist > 5) plDragBegin(st);
+      return;
+    }
+    if(e.cancelable) e.preventDefault();
+    plDragUpdate(st);
+  }
+  function plDragTarget(st){
+    var tracks = calendarBody.querySelectorAll('.day-track');
+    if(!tracks.length) return null;
+    var best = null, bestD = Infinity;
+    tracks.forEach(function(tr){
+      var r = tr.getBoundingClientRect();
+      var d = st.x < r.left ? r.left - st.x : (st.x > r.right ? st.x - r.right : 0);
+      if(d < bestD){ bestD = d; best = tr; }
+    });
+    var r = best.getBoundingClientRect();
+    var total = (HOUR_END - HOUR_START) * 60;
+    var ghostTop = st.rect.top + (st.y - st.startY);
+    var mins = HOUR_START * 60 + ((ghostTop - r.top) / r.height) * total;
+    mins = Math.round(mins / PL_SNAP) * PL_SNAP;
+    var dur = st.task.duration || 30;
+    mins = Math.max(HOUR_START * 60, Math.min(HOUR_END * 60 - dur, mins));
+    return { track:best, rect:r, date:best.dataset.date, minutes:mins };
+  }
+  function plDragUpdate(st){
+    var tg = plDragTarget(st);
+    if(!tg) return;
+    if(st.track !== tg.track){
+      if(st.track) st.track.classList.remove('pl-drop-target');
+      tg.track.classList.add('pl-drop-target');
+      st.track = tg.track;
+    }
+    var total = (HOUR_END - HOUR_START) * 60;
+    var top = tg.rect.top + ((tg.minutes - HOUR_START * 60) / total) * tg.rect.height;
+    st.ghost.style.left = (tg.rect.left + 2) + 'px';
+    st.ghost.style.top = top + 'px';
+    st.ghost.style.width = Math.min(st.rect.width, Math.max(tg.rect.width - 6, 20)) + 'px';
+    var d = parseDateStr(tg.date);
+    st.tip.textContent = fmtShortDay(d) + ' ' + fmtShort(d) + ' · ' + plMinToTime(tg.minutes);
+    st.tip.style.left = Math.min(st.x + 14, window.innerWidth - 140) + 'px';
+    st.tip.style.top = Math.max(st.y - 36, 4) + 'px';
+  }
+  // Défilement automatique quand on approche des bords du calendrier
+  function plDragLoop(st){
+    if(plDrag !== st || !st.active) return;
+    var gs = calendarBody.querySelector('.grid-scroll');
+    if(gs){
+      var r = gs.getBoundingClientRect(), gut = calendarBody.querySelector('.time-gutter');
+      var left = r.left + (gut ? gut.getBoundingClientRect().width : 0), zone = 32, sx = 0, sy = 0;
+      if(st.x > r.right - zone) sx = 12; else if(st.x < left + zone) sx = -12;
+      if(st.y > r.bottom - zone) sy = 12; else if(st.y < r.top + zone) sy = -12;
+      if(sx || sy){
+        var bx = gs.scrollLeft, by = gs.scrollTop;
+        gs.scrollLeft += sx; gs.scrollTop += sy;
+        if(gs.scrollLeft !== bx || gs.scrollTop !== by) plDragUpdate(st);
+      }
+    }
+    st.raf = requestAnimationFrame(function(){ plDragLoop(st); });
+  }
+  function plDragCleanup(){
+    var st = plDrag;
+    document.removeEventListener('pointermove', plDragMove);
+    document.removeEventListener('pointerup', plDragEnd);
+    document.removeEventListener('pointercancel', plDragAbort);
+    if(st){
+      clearTimeout(st.timer);
+      if(st.raf) cancelAnimationFrame(st.raf);
+      if(st.ghost && st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
+      if(st.tip && st.tip.parentNode) st.tip.parentNode.removeChild(st.tip);
+      if(st.track) st.track.classList.remove('pl-drop-target');
+      st.block.classList.remove('is-drag-origin');
+    }
+    document.body.style.userSelect = '';
+    plDrag = null;
+  }
+  function plDragAbort(){
+    var st = plDrag;
+    var was = st && st.active;
+    plDragCleanup();
+    if(was){ plDragJustEnded = true; setTimeout(function(){ plDragJustEnded = false; }, 400); }
+  }
+  function plDragEnd(e){
+    var st = plDrag;
+    if(!st || e.pointerId !== st.id) return;
+    var wasActive = st.active;
+    var target = wasActive ? plDragTarget(st) : null;
+    plDragCleanup();
+    if(!wasActive) return;
+    plDragJustEnded = true; setTimeout(function(){ plDragJustEnded = false; }, 400);
+    if(!target) return;
+    var newTime = plMinToTime(target.minutes);
+    if(target.date === st.task.date && newTime === st.task.time) return;
+    st.task.date = target.date; st.task.time = newTime; st.task.locked = true;
+    saveTasks();
+    renderAll();
+  }
+  // Après un glisser-déposer, le navigateur peut émettre un « clic » : on l'avale (sinon ouverture de la fiche ou d'une nouvelle tâche)
+  calendarBody.addEventListener('click', function(e){
+    if(plDragJustEnded){ e.stopPropagation(); e.preventDefault(); plDragJustEnded = false; }
+  }, true);
+  document.addEventListener('touchmove', function(e){
+    if(plDrag && plDrag.active && e.cancelable) e.preventDefault();
+  }, { passive:false });
+
 
   /* ================================================================
      PROGRAMME DE RÉVISIONS
