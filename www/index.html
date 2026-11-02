@@ -732,6 +732,12 @@
   .pl-drag-tip{ position:fixed; z-index:310; pointer-events:none; background:var(--ink); color:#fff; font-family:var(--font-mono); font-size:11px; padding:4px 8px; border-radius:6px; white-space:nowrap; }
 
   #planner-overlay .modal-card{ max-height:92vh; max-height:92dvh; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+
+  /* ---------------- Sessions de travail (tâches à plusieurs éléments) + modification de toute la série ---------------- */
+  .pl-item-top input.pl-units{ width:64px; flex:none; text-align:center; padding:8px 6px; }
+  .pl-x{ color:var(--ink-faint); font-size:13px; flex:none; margin-right:-2px; }
+  .pl-units-hint{ margin:8px 0 0; }
+  .series-apply{ margin:0 0 14px; padding:9px 12px; border:1px solid var(--line-soft); border-radius:var(--radius-m); background:var(--paper); align-items:center; }
 </style>
 </head>
 <body>
@@ -896,6 +902,10 @@
     <div class="edit-banner" id="series-banner" style="display:none;">
       🔁 <span id="series-banner-text"></span>
     </div>
+    <label class="checkbox-row series-apply" id="series-apply-row" style="display:none;">
+      <input type="checkbox" id="f-apply-series">
+      <span>Appliquer mes modifications à toute la série <span id="series-apply-count"></span></span>
+    </label>
     <form id="task-form">
       <div class="field">
         <label class="field-label" for="f-title">Titre</label>
@@ -1057,7 +1067,7 @@
         <label class="field-label">Tâches à planifier</label>
         <div id="pl-items"></div>
         <button type="button" class="btn-ghost" id="pl-add-item">＋ Ajouter une tâche</button>
-        <div class="field-hint">Rapidité : Rapide ≈ 30 min, Moyenne ≈ 1 h 30, Longue ≈ 3 h. Une tâche longue peut être découpée en plusieurs blocs.</div>
+        <div class="field-hint">Rapidité : Rapide ≈ 30 min, Moyenne ≈ 1 h 30, Longue ≈ 3 h. Une tâche longue peut être découpée en plusieurs blocs. Pour une tâche volumineuse, indiquez son nombre d'éléments dans la case « × » : « Rapidité » devient la durée moyenne d'un élément.</div>
       </div>
 
       <div class="field">
@@ -1103,6 +1113,12 @@
           <label class="field-label" for="pl-color">Couleur des tâches planifiées</label>
           <div class="pl-color-row"><input type="color" id="pl-color" value="#0E9AA7"><span class="field-hint" style="margin:0;">Réservée au planificateur</span></div>
         </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="pl-sessionmax">Durée max. d'une session (h)</label>
+        <input type="number" id="pl-sessionmax" min="0.5" step="0.5" value="2">
+        <div class="field-hint">Pour une tâche à plusieurs éléments (ex. 24 dossiers : renseignez « × 24 »), l'appli la découpe en sessions de cette durée au plus, en regroupant des éléments entiers.</div>
       </div>
 
       <div class="pl-error" id="pl-error"></div>
@@ -2134,10 +2150,13 @@ window.addEventListener('error', function(ev){
       document.getElementById('extra-dates-field').style.display = '';
       if(prefill.recurrenceId){
         var n = tasks.filter(function(t){ return t.recurrenceId === prefill.recurrenceId; }).length;
-        document.getElementById('series-banner-text').textContent = 'Cette tâche appartient à une série de ' + n + ' occurrences (' + (prefill.recurrenceLabel||'récurrente') + '). Les modifications ne s\u2019appliquent qu\u2019à cette occurrence.';
+        document.getElementById('series-banner-text').textContent = 'Cette tâche appartient à une série de ' + n + ' occurrences (' + (prefill.recurrenceLabel||'récurrente') + '). Les modifications ne s\u2019appliquent qu\u2019à cette occurrence, sauf si vous cochez « Appliquer mes modifications à toute la série ».';
         seriesBanner.style.display = 'flex';
+        document.getElementById('series-apply-row').style.display = '';
+        document.getElementById('f-apply-series').checked = false;
+        document.getElementById('series-apply-count').textContent = '(' + n + ' occurrences)';
       } else {
-        seriesBanner.style.display = 'none';
+        seriesBanner.style.display = 'none'; document.getElementById('series-apply-row').style.display = 'none';
       }
     } else {
       modalTitle.textContent = 'Nouvelle tâche';
@@ -2159,7 +2178,7 @@ window.addEventListener('error', function(ev){
       recurrenceField.style.display = '';
       recurrenceBlock.style.display = 'none';
       document.getElementById('f-recurrence').value = 'none';
-      seriesBanner.style.display = 'none';
+      seriesBanner.style.display = 'none'; document.getElementById('series-apply-row').style.display = 'none';
       document.getElementById('modal-delete-btn').style.display = 'none';
       document.getElementById('extra-dates-field').style.display = 'none';
       document.getElementById('locked-field').style.display = 'none';
@@ -2351,6 +2370,10 @@ window.addEventListener('error', function(ev){
       var t = tasks.find(function(x){ return x.id === editingId; });
       if(t){
         var plMoved = (t.source === 'planner') && (t.date !== date || (t.time || '') !== (time || ''));
+        // « Appliquer à toute la série » : seules les valeurs réellement modifiées sont propagées aux autres occurrences
+        var applySeries = !!(t.recurrenceId && document.getElementById('f-apply-series').checked);
+        var orig = applySeries ? { title:t.title, category:t.category, time:t.time || '', allDay:(!t.time && !t.reminder), reminder:!!t.reminder,
+                                   duration:t.duration, deadline:t.deadline || '', noAlert:(t.alert === false), tb:t.travelBefore || 0, ta:t.travelAfter || 0 } : null;
         t.title = title; t.date = date; t.time = time; t.duration = duration;
         t.category = selectedCategory; t.deadline = deadline; t.endDate = endDate;
         t.reminder = isReminder ? true : undefined;
@@ -2361,6 +2384,27 @@ window.addEventListener('error', function(ev){
         if(t.source === 'planner'){
           // Déplacée à la main (ou case cochée) : fixée, donc conservée par une replanification
           if(plMoved || document.getElementById('f-locked').checked) t.locked = true; else delete t.locked;
+        }
+        if(applySeries){
+          var oldBase = plBaseTitle(orig.title), newBase = plBaseTitle(title);
+          tasks.forEach(function(x){
+            if(x.id === t.id || x.recurrenceId !== t.recurrenceId) return;
+            if(newBase !== oldBase) x.title = newBase + x.title.substring(plBaseTitle(x.title).length);
+            if(selectedCategory !== orig.category) x.category = selectedCategory;
+            if((time || '') !== orig.time || isReminder !== orig.reminder || isAllDay !== orig.allDay){
+              x.time = time; x.reminder = isReminder ? true : undefined; x.endDate = isAllDay ? x.date : '';
+            }
+            if(duration !== orig.duration) x.duration = duration;
+            if(deadline !== orig.deadline) x.deadline = deadline;
+            if(alertOn !== !orig.noAlert){ if(alertOn) delete x.alert; else x.alert = false; }
+            if(travelBefore !== orig.tb){ if(travelBefore) x.travelBefore = travelBefore; else delete x.travelBefore; }
+            if(travelAfter !== orig.ta){ if(travelAfter) x.travelAfter = travelAfter; else delete x.travelAfter; }
+          });
+          // un lot du planificateur mémorise le titre de base : on le tient à jour pour la replanification
+          if(t.source === 'planner' && newBase !== oldBase && plannerBatches[t.plannerBatchId]){
+            (plannerBatches[t.plannerBatchId].items || []).forEach(function(it){ if(it.pid === t.plannerItemId) it.title = newBase; });
+            savePlannerBatches();
+          }
         }
 
         // Adding dates while editing extends the series. If this task wasn't
@@ -3249,14 +3293,22 @@ window.addEventListener('error', function(ev){
     }
     return slots;
   }
-  // items : [{title, difficulty 1-3, speed 1-3, importance 1-3, minutes?}]  (minutes = durée restante imposée)
+  // items : [{title, difficulty 1-3, speed 1-3, importance 1-3, minutes?, units?}]
+  //  - minutes : durée restante imposée (replanification d'une tâche simple)
+  //  - units   : nombre d'éléments d'une tâche volumineuse (ex. 24 dossiers). « speed » est alors la durée
+  //              MOYENNE d'un élément ; la tâche est découpée en sessions d'éléments entiers (cfg.sessionMax).
   function plannerBuildPlan(items, cfg){
     var slots = plannerFreeSlots(cfg);
     var capMin = cfg.maxPerDay > 0 ? cfg.maxPerDay : Infinity;
+    var sessionMax = cfg.sessionMax > 0 ? cfg.sessionMax : 120;
     var load = {};
     var order = items.map(function(it, i){
-      var mins = (typeof it.minutes === 'number' && it.minutes > 0) ? it.minutes : (PLANNER_SPEED_MIN[it.speed] || 90);
-      return { idx:i, item:it, minutes: mins, score: it.importance * 3 + it.difficulty };
+      var units = Math.max(1, Math.round(it.units || 1));
+      var unitMin = PLANNER_SPEED_MIN[it.speed] || 90;
+      var mins = units > 1 ? units * unitMin
+               : ((typeof it.minutes === 'number' && it.minutes > 0) ? it.minutes : unitMin);
+      return { idx:i, item:it, units:units, unitMin:unitMin, minutes:mins, score: it.importance * 3 + it.difficulty,
+               remUnits:units, chunks:[] };
     });
     // Les plus prioritaires d'abord : importance, puis difficulté, puis durée la plus longue
     order.sort(function(a, b){ return (b.score - a.score) || (b.minutes - a.minutes) || (a.idx - b.idx); });
@@ -3290,24 +3342,72 @@ window.addEventListener('error', function(ev){
       slots = work; load = wl; chunksByItem[o.idx] = chunks;
       return true;
     }
+    // Tâche volumineuse : sessions d'éléments entiers (durée moyenne d'un élément × nombre d'éléments),
+    // d'au plus sessionMax. Une session par jour d'abord, puis on complète les jours déjà occupés.
+    function placeUnits(o, ignoreCap){
+      var kMax = Math.max(1, Math.floor(sessionMax / o.unitMin));
+      var usedDay = {};
+      o.chunks.forEach(function(c){ usedDay[c.date] = true; });
+      function fit(s){
+        var r = s.end - s.start;
+        if(!ignoreCap) r = Math.min(r, capMin - (load[s.date] || 0));
+        return Math.floor(r / o.unitMin);
+      }
+      function pass(onePerDay){
+        for(var i = 0; i < slots.length && o.remUnits > 0; i++){
+          var s = slots[i];
+          if(onePerDay && usedDay[s.date]) continue;
+          // 2e passe : on remplit tout le créneau (plusieurs sessions possibles le même jour)
+          while(o.remUnits > 0){
+            var k = Math.min(fit(s), kMax, o.remUnits);
+            if(k < 1) break;
+            var dur = k * o.unitMin;
+            o.chunks.push({ date:s.date, start:s.start, duration:dur, units:k });
+            s.start += dur; load[s.date] = (load[s.date] || 0) + dur;
+            o.remUnits -= k; usedDay[s.date] = true;
+            if(onePerDay) break;
+          }
+        }
+      }
+      pass(true); pass(false);
+    }
     // Passe 1 : en respectant le plafond quotidien ; passe 2 : sans plafond pour ce qui n'a pas trouvé de place
     var failed = [], unplaced = [];
-    order.forEach(function(o){ if(!tryPlace(o, false)) failed.push(o); });
-    failed.forEach(function(o){ if(!tryPlace(o, true)) unplaced.push(o); });
+    order.forEach(function(o){
+      if(o.units > 1) placeUnits(o, false);
+      else if(!tryPlace(o, false)) failed.push(o);
+    });
+    order.forEach(function(o){
+      if(o.units > 1){ if(o.remUnits > 0) placeUnits(o, true); }
+      else if(failed.indexOf(o) >= 0 && !tryPlace(o, true)) unplaced.push(o);
+    });
+    order.forEach(function(o){
+      if(o.units > 1){
+        if(o.chunks.length) chunksByItem[o.idx] = o.chunks;
+        if(o.remUnits > 0) unplaced.push(o);
+      }
+    });
 
     var blocks = [], needed = 0, placed = 0;
     order.forEach(function(o){ needed += o.minutes; });
     Object.keys(chunksByItem).forEach(function(k){
       var chunks = chunksByItem[k].slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : a.start - b.start; });
+      var acc = 0;
       chunks.forEach(function(c, n){
-        blocks.push({ idx:+k, title:items[k].title, date:c.date, start:c.start, duration:c.duration, part:n + 1, parts:chunks.length });
+        var blk = { idx:+k, title:items[k].title, date:c.date, start:c.start, duration:c.duration, part:n + 1, parts:chunks.length };
+        if(c.units){ blk.units = c.units; blk.unitFrom = acc + 1; blk.unitTo = acc + c.units; acc += c.units; }
+        blocks.push(blk);
         placed += c.duration;
       });
     });
     blocks.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : a.start - b.start; });
     return {
       blocks: blocks,
-      unplaced: unplaced.map(function(o){ return { title:o.item.title, minutes:o.minutes }; }),
+      unplaced: unplaced.map(function(o){
+        return o.units > 1
+          ? { title:o.item.title + ' · ' + o.remUnits + ' élément' + (o.remUnits > 1 ? 's' : ''), minutes:o.remUnits * o.unitMin }
+          : { title:o.item.title, minutes:o.minutes };
+      }),
       neededMin: needed, placedMin: placed, missingMin: needed - placed
     };
   }
@@ -3325,7 +3425,7 @@ window.addEventListener('error', function(ev){
       avail: plannerDefaultAvail(),
       lunch: { on:true, start:'12:00', end:'13:30' },
       exceptions: [],
-      maxPerDay: 240, color: PLANNER_DEFAULT_COLOR
+      maxPerDay: 240, sessionMax: 120, color: PLANNER_DEFAULT_COLOR
     };
     try{
       var raw = JSON.parse(localStorage.getItem(PLANNER_CFG_KEY) || 'null');
@@ -3353,6 +3453,7 @@ window.addEventListener('error', function(ev){
           }).map(function(x){ return x.off === true ? { date:x.date, off:true } : { date:x.date, start:x.start, end:x.end }; });
         }
         if(typeof raw.maxPerDay === 'number' && raw.maxPerDay >= 0) cfg.maxPerDay = raw.maxPerDay;
+        if(typeof raw.sessionMax === 'number' && raw.sessionMax >= 15 && raw.sessionMax <= 720) cfg.sessionMax = raw.sessionMax;
         if(typeof raw.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.color)) cfg.color = raw.color;
       }
     }catch(e){}
@@ -3378,8 +3479,43 @@ window.addEventListener('error', function(ev){
   var plReplanId = null;         // id du lot en cours de replanification (sinon null)
   var plPlan = null;
 
-  function plNewItem(){ return { pid: uid(), title:'', difficulty:2, speed:2, importance:2 }; }
+  function plNewItem(){ return { pid: uid(), title:'', units:1, difficulty:2, speed:2, importance:2 }; }
   function plMinToTime(m){ return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  // Sessions d'une tâche volumineuse : titre = titre de base + « · session i/m (éléments a–b) »
+  var PL_SESSION_RE = /\s·\ssession\s\d+\/\d+.*$|\s\(\d+\/\d+\)$/;
+  function plBaseTitle(t){ return String(t || '').replace(PL_SESSION_RE, ''); }
+  function plSessionSuffix(i, m, from, to){
+    var s = ' · session ' + i + '/' + m;
+    if(from) s += (from === to) ? ' (élément ' + from + ')' : ' (éléments ' + from + '–' + to + ')';
+    return s;
+  }
+  function plUnitsHint(it, el){
+    var n = it.units || 1;
+    if(n <= 1){ el.textContent = ''; el.style.display = 'none'; return; }
+    var u = PLANNER_SPEED_MIN[it.speed] || 90;
+    el.style.display = '';
+    el.textContent = n + ' éléments × ' + formatDuration(u) + ' (« Rapidité » = durée moyenne d’un élément) = ' + formatDuration(n * u) + ', découpés en sessions.';
+  }
+  // Renumérote les sessions d'une tâche du lot (ordre chronologique) et les relie en série (occurrences)
+  function plRenumberItem(batchId, pid, baseTitle, withUnits){
+    var list = tasks.filter(function(t){ return t.source === 'planner' && t.plannerBatchId === batchId && t.plannerItemId === pid; });
+    list.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '') < (b.time || '') ? -1 : 1; });
+    var m = list.length, acc = 0, rid = null;
+    list.forEach(function(t){ if(!rid && t.recurrenceId) rid = t.recurrenceId; });
+    if(m > 1 && !rid) rid = uid();
+    list.forEach(function(t, i){
+      if(m > 1){
+        var u = withUnits ? (t.plannerUnits || 0) : 0;
+        var from = u ? acc + 1 : 0, to = u ? acc + u : 0;
+        acc += u;
+        t.title = baseTitle + plSessionSuffix(i + 1, m, from, to);
+        t.recurrenceId = rid; t.recurrenceLabel = 'Sessions de travail';
+      } else {
+        t.title = baseTitle;
+        delete t.recurrenceId; delete t.recurrenceLabel;
+      }
+    });
+  }
 
   function plRenderItems(){
     var wrap = document.getElementById('pl-items');
@@ -3402,7 +3538,13 @@ window.addEventListener('error', function(ev){
         if(!plItems.length) plItems.push(plNewItem());
         plRenderItems();
       });
-      top.appendChild(inp); top.appendChild(del); row.appendChild(top);
+      var hint = document.createElement('div'); hint.className = 'field-hint pl-units-hint';
+      var xs = document.createElement('span'); xs.className = 'pl-x'; xs.textContent = '×';
+      var un = document.createElement('input');
+      un.type = 'number'; un.className = 'pl-units'; un.min = '1'; un.max = '200'; un.step = '1'; un.value = String(it.units || 1);
+      un.setAttribute('aria-label', 'Nombre d\u2019éléments'); un.title = 'Nombre d\u2019éléments (1 = tâche simple)';
+      un.addEventListener('input', function(){ it.units = Math.max(1, Math.min(200, parseInt(un.value, 10) || 1)); plUnitsHint(it, hint); });
+      top.appendChild(inp); top.appendChild(xs); top.appendChild(un); top.appendChild(del); row.appendChild(top);
       var sels = document.createElement('div'); sels.className = 'pl-sels';
       defs.forEach(function(def){
         var lab = document.createElement('label'); lab.className = 'pl-sel';
@@ -3412,10 +3554,12 @@ window.addEventListener('error', function(ev){
           var o = document.createElement('option'); o.value = String(k + 1); o.textContent = txt; sel.appendChild(o);
         });
         sel.value = String(it[def[0]]);
-        sel.addEventListener('change', function(){ it[def[0]] = parseInt(sel.value, 10); });
+        sel.addEventListener('change', function(){ it[def[0]] = parseInt(sel.value, 10); plUnitsHint(it, hint); });
         lab.appendChild(sp); lab.appendChild(sel); sels.appendChild(lab);
       });
       row.appendChild(sels);
+      row.appendChild(hint);
+      plUnitsHint(it, hint);
       wrap.appendChild(row);
     });
   }
@@ -3517,7 +3661,7 @@ window.addEventListener('error', function(ev){
     plReplanId = meta ? batchId : null;
     if(meta){
       plItems = (meta.items || []).map(function(it){
-        return { pid: it.pid || uid(), title: it.title || '', difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2 };
+        return { pid: it.pid || uid(), title: it.title || '', units: it.units || 1, difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2 };
       });
       if(!plItems.length) plItems.push(plNewItem());
       dl.value = (meta.deadline && meta.deadline >= todayStr()) ? meta.deadline : '';
@@ -3533,6 +3677,7 @@ window.addEventListener('error', function(ev){
       document.getElementById('pl-confirm').textContent = 'Ajouter au calendrier';
     }
     document.getElementById('pl-maxday').value = plannerCfg.maxPerDay > 0 ? (plannerCfg.maxPerDay / 60) : '';
+    document.getElementById('pl-sessionmax').value = plannerCfg.sessionMax / 60;
     document.getElementById('pl-color').value = plannerCfg.color;
     document.getElementById('pl-error').textContent = '';
     document.getElementById('pl-exc-error').textContent = '';
@@ -3577,7 +3722,7 @@ window.addEventListener('error', function(ev){
     err.textContent = '';
     var deadline = document.getElementById('pl-deadline').value;
     var items = plItems.filter(function(it){ return it.title.trim(); }).map(function(it){
-      return { pid: it.pid, title: it.title.trim(), difficulty: it.difficulty, speed: it.speed, importance: it.importance };
+      return { pid: it.pid, title: it.title.trim(), units: it.units || 1, difficulty: it.difficulty, speed: it.speed, importance: it.importance };
     });
     if(!deadline || deadline < todayStr()){ err.textContent = 'Choisissez une échéance (aujourd\u2019hui ou plus tard).'; return; }
     if(!items.length){ err.textContent = 'Ajoutez au moins une tâche avec un titre.'; return; }
@@ -3586,6 +3731,8 @@ window.addEventListener('error', function(ev){
     }
     var h = parseFloat(document.getElementById('pl-maxday').value);
     plannerCfg.maxPerDay = h > 0 ? Math.round(h * 60) : 0;
+    var sm = parseFloat(document.getElementById('pl-sessionmax').value);
+    plannerCfg.sessionMax = sm >= 0.25 ? Math.min(720, Math.round(sm * 60)) : 120;
     plReadLunch();
     savePlannerCfg();
 
@@ -3599,12 +3746,21 @@ window.addEventListener('error', function(ev){
       var batchTasks = tasks.filter(function(t){ return t.source === 'planner' && t.plannerBatchId === plReplanId; });
       var removable = batchTasks.filter(function(t){ return !t.done && !t.locked; });
       var kept = batchTasks.filter(function(t){ return t.done || t.locked; });
-      var covered = {}, removeIds = {};
-      kept.forEach(function(t){ covered[t.plannerItemId] = (covered[t.plannerItemId] || 0) + (t.duration || 0); });
+      var covered = {}, coveredU = {}, removeIds = {};
+      kept.forEach(function(t){
+        covered[t.plannerItemId] = (covered[t.plannerItemId] || 0) + (t.duration || 0);
+        coveredU[t.plannerItemId] = (coveredU[t.plannerItemId] || 0) + (t.plannerUnits || 0);
+      });
       removable.forEach(function(t){ removeIds[t.id] = true; });
       busyTasks = tasks.filter(function(t){ return !removeIds[t.id]; });
       planItems = [];
       items.forEach(function(it){
+        if((it.units || 1) > 1){
+          // tâche volumineuse : on ne replanifie que les éléments restants
+          var remU = it.units - (coveredU[it.pid] || 0);
+          if(remU > 0) planItems.push(Object.assign({}, it, { units: remU }));
+          return;
+        }
         var rem = (PLANNER_SPEED_MIN[it.speed] || 90) - (covered[it.pid] || 0);
         if(rem > 0) planItems.push(Object.assign({}, it, { minutes: rem }));
       });
@@ -3615,7 +3771,7 @@ window.addEventListener('error', function(ev){
     plPlan = plannerBuildPlan(planItems, {
       avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: exMap,
       startDate: todayStr(), nowMinutes: nowMinutes(),
-      deadline: deadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay
+      deadline: deadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay, sessionMax: plannerCfg.sessionMax
     });
     plPlan.deadline = deadline;
     plPlan.items = planItems;
@@ -3650,7 +3806,7 @@ window.addEventListener('error', function(ev){
         html += '<div class="pl-day-head">' + escapeHtml(fmtShortDay(d) + ' ' + fmtShort(d)) + '</div>';
         lastDate = b.date;
       }
-      var title = b.title + (b.parts > 1 ? ' (' + b.part + '/' + b.parts + ')' : '');
+      var title = b.title + (b.parts > 1 ? plSessionSuffix(b.part, b.parts, b.unitFrom, b.unitTo) : '');
       html += '<div class="pl-block" style="--pl-color:' + plannerCfg.color + ';"><span class="t">' + plMinToTime(b.start) + '–' + plMinToTime(b.start + b.duration) + '</span><span>' + escapeHtml(title) + '</span></div>';
     });
     if(p.unplaced.length){
@@ -3678,16 +3834,19 @@ window.addEventListener('error', function(ev){
     }
     plPlan.blocks.forEach(function(b){
       tasks.push({
-        id: uid(), title: b.title + (b.parts > 1 ? ' (' + b.part + '/' + b.parts + ')' : ''),
+        id: uid(), title: b.title,
         category: PLANNER_KEY, date: b.date, time: plMinToTime(b.start), duration: b.duration,
         deadline: '', endDate: '', done: false,
         source: 'planner', plannerBatchId: batchId, plannerBatchLabel: label,
-        plannerItemId: plPlan.items[b.idx].pid
+        plannerItemId: plPlan.items[b.idx].pid,
+        plannerUnits: b.units || undefined
       });
     });
+    // Les sessions d'une même tâche forment une série (occurrences) : numérotation + lien de série
+    plPlan.allItems.forEach(function(it){ plRenumberItem(batchId, it.pid, it.title, (it.units || 1) > 1); });
     plannerBatches[batchId] = {
       label: label, deadline: plPlan.deadline,
-      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, difficulty:it.difficulty, speed:it.speed, importance:it.importance }; })
+      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, units:it.units || 1, difficulty:it.difficulty, speed:it.speed, importance:it.importance }; })
     };
     savePlannerBatches();
     currentDate = parseDateStr(plPlan.blocks[0].date);
