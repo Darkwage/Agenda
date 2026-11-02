@@ -738,6 +738,12 @@
   .pl-x{ color:var(--ink-faint); font-size:13px; flex:none; margin-right:-2px; }
   .pl-units-hint{ margin:8px 0 0; }
   .series-apply{ margin:0 0 14px; padding:9px 12px; border:1px solid var(--line-soft); border-radius:var(--radius-m); background:var(--paper); align-items:center; }
+
+  /* ---------------- Planificateur : échéance par tâche ---------------- */
+  .pl-item-dl{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:11px; font-weight:600; color:var(--ink-soft); }
+  .pl-item-dl input[type=date]{ flex:1; min-width:0; padding:7px 8px; font-size:12.5px; }
+  .pl-dl-default{ font-weight:400; color:var(--ink-faint); font-size:11.5px; flex:none; }
+  .pl-dl-mark{ font-size:12.5px; color:var(--danger); padding:4px 10px; margin-bottom:5px; }
 </style>
 </head>
 <body>
@@ -1059,8 +1065,9 @@
 
     <div id="planner-step-form">
       <div class="field">
-        <label class="field-label" for="pl-deadline">Échéance maximale pour l'ensemble des tâches</label>
+        <label class="field-label" for="pl-deadline">Échéance par défaut</label>
         <input type="date" id="pl-deadline">
+        <div class="field-hint">Utilisée pour les tâches qui n'ont pas leur propre échéance. Chaque tâche peut avoir la sienne (champ « Échéance » de la tâche) : la plus proche passe en premier.</div>
       </div>
 
       <div class="field">
@@ -3308,10 +3315,13 @@ window.addEventListener('error', function(ev){
       var mins = units > 1 ? units * unitMin
                : ((typeof it.minutes === 'number' && it.minutes > 0) ? it.minutes : unitMin);
       return { idx:i, item:it, units:units, unitMin:unitMin, minutes:mins, score: it.importance * 3 + it.difficulty,
-               remUnits:units, chunks:[] };
+               dl: it.deadline || cfg.deadline, remUnits:units, chunks:[] };
     });
-    // Les plus prioritaires d'abord : importance, puis difficulté, puis durée la plus longue
-    order.sort(function(a, b){ return (b.score - a.score) || (b.minutes - a.minutes) || (a.idx - b.idx); });
+    // Échéance la plus proche d'abord ; à échéance égale : importance, puis difficulté, puis durée la plus longue.
+    // Chaque tâche n'utilise que les créneaux situés au plus tard le jour de SA propre échéance.
+    order.sort(function(a, b){
+      return (a.dl < b.dl ? -1 : a.dl > b.dl ? 1 : 0) || (b.score - a.score) || (b.minutes - a.minutes) || (a.idx - b.idx);
+    });
 
     var chunksByItem = {};
     function tryPlace(o, ignoreCap){
@@ -3319,6 +3329,7 @@ window.addEventListener('error', function(ev){
       var wl = {}; for(var k in load) wl[k] = load[k];
       var remaining = o.minutes, chunks = [], i, j;
       function room(s){
+        if(s.date > o.dl) return 0;
         var r = s.end - s.start;
         return ignoreCap ? r : Math.min(r, capMin - (wl[s.date] || 0));
       }
@@ -3349,6 +3360,7 @@ window.addEventListener('error', function(ev){
       var usedDay = {};
       o.chunks.forEach(function(c){ usedDay[c.date] = true; });
       function fit(s){
+        if(s.date > o.dl) return 0;
         var r = s.end - s.start;
         if(!ignoreCap) r = Math.min(r, capMin - (load[s.date] || 0));
         return Math.floor(r / o.unitMin);
@@ -3405,8 +3417,8 @@ window.addEventListener('error', function(ev){
       blocks: blocks,
       unplaced: unplaced.map(function(o){
         return o.units > 1
-          ? { title:o.item.title + ' · ' + o.remUnits + ' élément' + (o.remUnits > 1 ? 's' : ''), minutes:o.remUnits * o.unitMin }
-          : { title:o.item.title, minutes:o.minutes };
+          ? { title:o.item.title + ' · ' + o.remUnits + ' élément' + (o.remUnits > 1 ? 's' : ''), minutes:o.remUnits * o.unitMin, deadline:o.dl }
+          : { title:o.item.title, minutes:o.minutes, deadline:o.dl };
       }),
       neededMin: needed, placedMin: placed, missingMin: needed - placed
     };
@@ -3479,7 +3491,7 @@ window.addEventListener('error', function(ev){
   var plReplanId = null;         // id du lot en cours de replanification (sinon null)
   var plPlan = null;
 
-  function plNewItem(){ return { pid: uid(), title:'', units:1, difficulty:2, speed:2, importance:2 }; }
+  function plNewItem(){ return { pid: uid(), title:'', units:1, difficulty:2, speed:2, importance:2, deadline:'' }; }
   function plMinToTime(m){ return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
   // Sessions d'une tâche volumineuse : titre = titre de base + « · session i/m (éléments a–b) »
   var PL_SESSION_RE = /\s·\ssession\s\d+\/\d+.*$|\s\(\d+\/\d+\)$/;
@@ -3558,6 +3570,16 @@ window.addEventListener('error', function(ev){
         lab.appendChild(sp); lab.appendChild(sel); sels.appendChild(lab);
       });
       row.appendChild(sels);
+      var dlRow = document.createElement('label'); dlRow.className = 'pl-item-dl';
+      var dlLab = document.createElement('span'); dlLab.textContent = 'Échéance';
+      var dlIn = document.createElement('input'); dlIn.type = 'date'; dlIn.min = todayStr(); dlIn.value = it.deadline || '';
+      dlIn.setAttribute('aria-label', 'Échéance de cette tâche');
+      var dlDef = document.createElement('span'); dlDef.className = 'pl-dl-default';
+      function syncDl(){ it.deadline = dlIn.value || ''; dlDef.textContent = it.deadline ? '' : 'par défaut'; }
+      dlIn.addEventListener('input', syncDl); dlIn.addEventListener('change', syncDl);
+      syncDl();
+      dlRow.appendChild(dlLab); dlRow.appendChild(dlIn); dlRow.appendChild(dlDef);
+      row.appendChild(dlRow);
       row.appendChild(hint);
       plUnitsHint(it, hint);
       wrap.appendChild(row);
@@ -3661,7 +3683,8 @@ window.addEventListener('error', function(ev){
     plReplanId = meta ? batchId : null;
     if(meta){
       plItems = (meta.items || []).map(function(it){
-        return { pid: it.pid || uid(), title: it.title || '', units: it.units || 1, difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2 };
+        return { pid: it.pid || uid(), title: it.title || '', units: it.units || 1, difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2,
+                 deadline: (it.deadline && it.deadline >= todayStr()) ? it.deadline : '' };
       });
       if(!plItems.length) plItems.push(plNewItem());
       dl.value = (meta.deadline && meta.deadline >= todayStr()) ? meta.deadline : '';
@@ -3722,10 +3745,17 @@ window.addEventListener('error', function(ev){
     err.textContent = '';
     var deadline = document.getElementById('pl-deadline').value;
     var items = plItems.filter(function(it){ return it.title.trim(); }).map(function(it){
-      return { pid: it.pid, title: it.title.trim(), units: it.units || 1, difficulty: it.difficulty, speed: it.speed, importance: it.importance };
+      return { pid: it.pid, title: it.title.trim(), units: it.units || 1, difficulty: it.difficulty, speed: it.speed, importance: it.importance, deadline: it.deadline || '' };
     });
-    if(!deadline || deadline < todayStr()){ err.textContent = 'Choisissez une échéance (aujourd\u2019hui ou plus tard).'; return; }
     if(!items.length){ err.textContent = 'Ajoutez au moins une tâche avec un titre.'; return; }
+    if(deadline && deadline < todayStr()){ err.textContent = 'L\u2019échéance par défaut est passée : choisissez aujourd\u2019hui ou plus tard.'; return; }
+    var lastDeadline = '';
+    for(var q = 0; q < items.length; q++){
+      var eff = items[q].deadline || deadline;
+      if(!eff){ err.textContent = 'Indiquez une échéance pour « ' + items[q].title + ' » ou une échéance par défaut.'; return; }
+      if(eff < todayStr()){ err.textContent = 'L\u2019échéance de « ' + items[q].title + ' » est passée.'; return; }
+      if(eff > lastDeadline) lastDeadline = eff;
+    }
     if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; }) && !plannerCfg.exceptions.some(function(x){ return !x.off; })){
       err.textContent = 'Cochez au moins un jour de disponibilité.'; return;
     }
@@ -3771,9 +3801,10 @@ window.addEventListener('error', function(ev){
     plPlan = plannerBuildPlan(planItems, {
       avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: exMap,
       startDate: todayStr(), nowMinutes: nowMinutes(),
-      deadline: deadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay, sessionMax: plannerCfg.sessionMax
+      deadline: lastDeadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay, sessionMax: plannerCfg.sessionMax
     });
     plPlan.deadline = deadline;
+    plPlan.lastDeadline = lastDeadline;
     plPlan.items = planItems;
     plPlan.allItems = items;
     plPlan.replan = replan;
@@ -3784,35 +3815,47 @@ window.addEventListener('error', function(ev){
     var p = plPlan;
     var sum = document.getElementById('pl-summary');
     var list = document.getElementById('pl-preview-list');
-    var dlText = fmtDayMonth(parseDateStr(p.deadline));
+    var dlText = fmtDayMonth(parseDateStr(p.lastDeadline || p.deadline));
+    var multiDl = p.allItems.some(function(it){ return (it.deadline || p.deadline) !== (p.lastDeadline || p.deadline); });
     var html = '';
     if(!p.blocks.length){
       sum.className = 'pl-note warn';
       sum.textContent = 'Aucun créneau libre trouvé avant le ' + dlText + '. Élargissez vos disponibilités ou repoussez l\u2019échéance.';
     } else if(p.missingMin <= 0){
       sum.className = 'pl-note ok';
-      sum.textContent = 'Tout tient : ' + formatDuration(p.placedMin) + ' de travail planifiées avant le ' + dlText + '.';
+      sum.textContent = 'Tout tient : ' + formatDuration(p.placedMin) + ' de travail planifiées' + (multiDl ? ', chaque tâche avant sa propre échéance.' : ' avant le ' + dlText + '.');
     } else {
       sum.className = 'pl-note warn';
-      sum.textContent = 'Il manque environ ' + formatDuration(p.missingMin) + ' de temps libre avant le ' + dlText + '. Repoussez l\u2019échéance, élargissez vos disponibilités ou retirez des tâches peu importantes.';
+      sum.textContent = 'Il manque environ ' + formatDuration(p.missingMin) + ' de temps libre' + (multiDl ? ' pour tenir toutes les échéances' : ' avant le ' + dlText) + '. Repoussez l\u2019échéance, élargissez vos disponibilités ou retirez des tâches peu importantes.';
     }
     if(p.replan){
       sum.textContent += ' Replanification : ' + p.replan.removedCount + ' bloc(s) remplacé(s), ' + p.replan.keptCount + ' conservé(s) (terminés ou fixés à la main).';
     }
-    var lastDate = '';
-    p.blocks.forEach(function(b){
-      if(b.date !== lastDate){
-        var d = parseDateStr(b.date);
-        html += '<div class="pl-day-head">' + escapeHtml(fmtShortDay(d) + ' ' + fmtShort(d)) + '</div>';
-        lastDate = b.date;
-      }
-      var title = b.title + (b.parts > 1 ? plSessionSuffix(b.part, b.parts, b.unitFrom, b.unitTo) : '');
-      html += '<div class="pl-block" style="--pl-color:' + plannerCfg.color + ';"><span class="t">' + plMinToTime(b.start) + '–' + plMinToTime(b.start + b.duration) + '</span><span>' + escapeHtml(title) + '</span></div>';
+    // Échéances affichées dans la liste, au jour concerné
+    var dlByDate = {};
+    p.allItems.forEach(function(it){
+      var eff = it.deadline || p.deadline;
+      if(eff) (dlByDate[eff] = dlByDate[eff] || []).push(it.title);
+    });
+    var dates = {};
+    p.blocks.forEach(function(b){ dates[b.date] = true; });
+    Object.keys(dlByDate).forEach(function(d){ dates[d] = true; });
+    Object.keys(dates).sort().forEach(function(ds){
+      var d = parseDateStr(ds);
+      html += '<div class="pl-day-head">' + escapeHtml(fmtShortDay(d) + ' ' + fmtShort(d)) + '</div>';
+      p.blocks.forEach(function(b){
+        if(b.date !== ds) return;
+        var title = b.title + (b.parts > 1 ? plSessionSuffix(b.part, b.parts, b.unitFrom, b.unitTo) : '');
+        html += '<div class="pl-block" style="--pl-color:' + plannerCfg.color + ';"><span class="t">' + plMinToTime(b.start) + '–' + plMinToTime(b.start + b.duration) + '</span><span>' + escapeHtml(title) + '</span></div>';
+      });
+      (dlByDate[ds] || []).forEach(function(t){
+        html += '<div class="pl-dl-mark">🚩 Échéance · ' + escapeHtml(t) + '</div>';
+      });
     });
     if(p.unplaced.length){
       html += '<div class="pl-day-head">Non planifiées</div>';
       p.unplaced.forEach(function(u){
-        html += '<div class="pl-block" style="--pl-color:var(--danger);"><span class="t">' + formatDuration(u.minutes) + '</span><span>' + escapeHtml(u.title) + '</span></div>';
+        html += '<div class="pl-block" style="--pl-color:var(--danger);"><span class="t">' + formatDuration(u.minutes) + '</span><span>' + escapeHtml(u.title) + (u.deadline ? ' · avant le ' + escapeHtml(fmtShort(parseDateStr(u.deadline))) : '') + '</span></div>';
       });
     }
     list.innerHTML = html;
@@ -3846,7 +3889,7 @@ window.addEventListener('error', function(ev){
     plPlan.allItems.forEach(function(it){ plRenumberItem(batchId, it.pid, it.title, (it.units || 1) > 1); });
     plannerBatches[batchId] = {
       label: label, deadline: plPlan.deadline,
-      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, units:it.units || 1, difficulty:it.difficulty, speed:it.speed, importance:it.importance }; })
+      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, units:it.units || 1, difficulty:it.difficulty, speed:it.speed, importance:it.importance, deadline:it.deadline || '' }; })
     };
     savePlannerBatches();
     currentDate = parseDateStr(plPlan.blocks[0].date);
