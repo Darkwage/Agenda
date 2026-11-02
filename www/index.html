@@ -744,6 +744,71 @@
   .pl-item-dl input[type=date]{ flex:1; min-width:0; padding:7px 8px; font-size:12.5px; }
   .pl-dl-default{ font-weight:400; color:var(--ink-faint); font-size:11.5px; flex:none; }
   .pl-dl-mark{ font-size:12.5px; color:var(--danger); padding:4px 10px; margin-bottom:5px; }
+
+  /* ---------------- Archives (onglet Liste) ---------------- */
+  .archive-section{ margin-top:22px; padding-top:14px; border-top:1px solid var(--line-soft); }
+  .archive-section > summary .count{ font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); font-weight:400; margin-left:6px; margin-right:auto; }
+  .archive-month{ font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); margin:12px 0 6px 2px; }
+  .archive-row{ position:relative; display:flex; align-items:center; gap:8px; padding:7px 8px 7px 13px; margin-bottom:6px; border:1px solid var(--line-soft); border-radius:var(--radius-s); background:var(--paper); font-size:13px; overflow:hidden; }
+  .archive-row::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--cat, var(--ink-faint)); }
+  .archive-row .ar-body{ flex:1; min-width:0; }
+  .archive-row .ar-title{ color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .archive-row.done .ar-title{ text-decoration:line-through; }
+  .archive-row .ar-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin-top:1px; }
+  .archive-tools{ display:flex; justify-content:flex-end; margin-top:10px; padding-bottom:72px; } /* laisse la place au bouton ＋ */
+
+  /* ---------------- Multi-sélection ---------------- */
+  .task-card, [data-open]{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  .task-card.is-selected{ border-color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 1.5px var(--accent); }
+  .task-card.is-selected::after{
+    content:"✓"; position:absolute; top:8px; right:8px; width:20px; height:20px; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink); font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  body.is-selecting .task-card .task-actions{ visibility:hidden; }
+  body.is-selecting .task-card .task-check{ pointer-events:none; }
+  .task-block.is-selected, .month-chip.is-selected, .allday-chip.is-selected, .travel-block.is-selected{ outline:2px solid var(--accent); outline-offset:1px; z-index:5; }
+  .task-block.is-armed{ outline:2px dashed var(--accent); outline-offset:1px; }
+  .fab.is-menu{ font-size:24px; }
+  .fab .fab-badge{
+    position:absolute; top:-4px; right:-4px; min-width:22px; height:22px; padding:0 6px; border-radius:11px;
+    background:var(--danger); color:#fff; font-size:12px; font-weight:700; font-family:var(--font-body);
+    display:flex; align-items:center; justify-content:center; border:2px solid var(--surface);
+  }
+  .sel-bar{
+    display:none; position:fixed; z-index:40; left:calc(16px + env(safe-area-inset-left)); bottom:calc(32px + env(safe-area-inset-bottom));
+    align-items:center; gap:10px; padding:8px 8px 8px 16px; border-radius:999px;
+    background:var(--ink); color:var(--surface); font-size:13px; font-weight:600; box-shadow:var(--shadow-card);
+  }
+  body.is-selecting .sel-bar{ display:flex; }
+  .sel-bar button{ width:28px; height:28px; border-radius:50%; border:none; background:rgba(255,255,255,.16); color:inherit; font-size:13px; }
+  .sheet-list{ display:flex; flex-direction:column; gap:6px; }
+  .sheet-btn{
+    display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; text-align:left;
+    border:1px solid var(--line); border-radius:var(--radius-m); background:var(--surface); color:var(--ink); font-size:14.5px; font-weight:500;
+  }
+  .sheet-btn span{ width:22px; text-align:center; flex:none; }
+  .sheet-btn:hover{ border-color:var(--accent); background:var(--accent-soft); }
+  .sheet-btn.danger{ color:var(--danger); }
+  .sheet-btn.danger:hover{ border-color:var(--danger); background:#FBF0F0; }
+  .sheet-btn.muted{ color:var(--ink-soft); border-style:dashed; }
+  .sheet-btn:disabled{ opacity:.45; }
+
+  /* ---------------- Report ---------------- */
+  .pp-intro{ margin:0 0 14px; font-size:13.5px; color:var(--ink-soft); line-height:1.45; }
+  .pp-actions{ margin-top:8px; }
+  .pp-actions .btn-ghost{ flex:1; }
+  .pp-item-head{ font-weight:600; font-size:13px; margin:12px 0 5px; }
+
+  /* ---------------- Message éphémère ---------------- */
+  .toast{
+    position:fixed; z-index:200; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); transform:translate(-50%, 20px);
+    display:flex; align-items:center; gap:14px; max-width:calc(100vw - 32px); padding:10px 12px 10px 16px; border-radius:var(--radius-m);
+    background:var(--ink); color:var(--surface); font-size:13px; box-shadow:var(--shadow-modal);
+    opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+  }
+  .toast.is-on{ opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
+  .toast button{ border:none; background:none; color:#9FD8C4; font-weight:700; font-size:13px; padding:4px; }
 </style>
 </head>
 <body>
@@ -892,12 +957,127 @@
     <aside class="sidebar-right" id="panel-list">
       <h2 class="section-title">Mes tâches <span class="count" id="task-count"></span></h2>
       <div id="task-list"></div>
+      <details class="collapsible archive-section" id="archive-details">
+        <summary>📦 Archives <span class="count" id="archive-count"></span> <span class="chev">▸</span></summary>
+        <div class="field-hint" style="margin:0 0 10px;">Les tâches passées depuis plus de 30 jours sont archivées automatiquement. Une tâche restaurée revient dans la liste et le calendrier.</div>
+        <div id="archive-list"></div>
+      </details>
     </aside>
 
   </div>
 </div>
 
 <button type="button" class="fab" id="fab-add" aria-label="Nouvelle tâche">＋</button>
+
+<!-- Multi-sélection : compteur + sortie du mode -->
+<div class="sel-bar" id="sel-bar" role="status">
+  <span id="sel-count"></span>
+  <button type="button" id="sel-cancel" aria-label="Annuler la sélection">✕</button>
+</div>
+
+<!-- Multi-sélection : menu des actions -->
+<div class="modal-overlay" id="sel-menu-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sel-menu-title">
+    <div class="modal-head">
+      <h2 id="sel-menu-title">Sélection</h2>
+      <button type="button" class="modal-close" data-close aria-label="Fermer">✕</button>
+    </div>
+    <div class="sheet-list">
+      <button type="button" class="sheet-btn" data-sel-act="edit"><span>✎</span>Modifier</button>
+      <button type="button" class="sheet-btn" data-sel-act="move"><span>📅</span>Déplacer à une autre date</button>
+      <button type="button" class="sheet-btn" data-sel-act="postpone"><span>⏩</span>Reporter</button>
+      <button type="button" class="sheet-btn" data-sel-act="archive"><span>📥</span>Archiver</button>
+      <button type="button" class="sheet-btn danger" data-sel-act="delete"><span>✕</span>Supprimer</button>
+      <button type="button" class="sheet-btn muted" data-sel-act="clear"><span>↺</span>Tout désélectionner</button>
+    </div>
+  </div>
+</div>
+
+<!-- Multi-sélection : modification groupée -->
+<div class="modal-overlay" id="bulk-edit-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bulk-edit-title">
+    <div class="modal-head">
+      <h2 id="bulk-edit-title">Modifier la sélection</h2>
+      <button type="button" class="modal-close" data-close aria-label="Fermer">✕</button>
+    </div>
+    <div class="field-hint" style="margin:0 0 14px;">Seuls les champs que vous remplissez sont modifiés ; les autres restent tels quels pour chaque tâche.</div>
+    <div class="field">
+      <label class="field-label" for="be-category">Catégorie</label>
+      <select id="be-category" class="select-input"></select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label" for="be-time">Heure de début</label>
+        <input type="time" id="be-time">
+      </div>
+      <div class="field">
+        <label class="field-label" for="be-duration">Durée (min)</label>
+        <input type="number" id="be-duration" min="5" max="1440" step="5" placeholder="Inchangée">
+      </div>
+    </div>
+    <div class="field-hint" style="margin:-8px 0 14px;">L'heure et la durée ne s'appliquent qu'aux tâches qui ont un horaire.</div>
+    <div class="field">
+      <label class="field-label" for="be-deadline">Échéance</label>
+      <input type="date" id="be-deadline">
+      <label class="checkbox-row" style="margin-top:8px;"><input type="checkbox" id="be-deadline-clear"> <span>Retirer l'échéance</span></label>
+    </div>
+    <div class="field">
+      <label class="field-label" for="be-done">État</label>
+      <select id="be-done" class="select-input">
+        <option value="">Inchangé</option>
+        <option value="todo">À faire</option>
+        <option value="done">Terminée</option>
+      </select>
+    </div>
+    <div class="pl-error" id="be-error"></div>
+    <button type="button" class="btn-primary" id="be-apply">Appliquer</button>
+  </div>
+</div>
+
+<!-- Multi-sélection : déplacement -->
+<div class="modal-overlay" id="move-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="move-title">
+    <div class="modal-head">
+      <h2 id="move-title">Déplacer</h2>
+      <button type="button" class="modal-close" data-close aria-label="Fermer">✕</button>
+    </div>
+    <div class="field">
+      <label class="field-label" for="mv-date">Nouvelle date</label>
+      <input type="date" id="mv-date">
+      <div class="field-hint">Les tâches gardent leur horaire ; une tâche sur plusieurs jours garde sa durée.</div>
+    </div>
+    <div class="pl-error" id="mv-error"></div>
+    <button type="button" class="btn-primary" id="mv-apply">Déplacer</button>
+  </div>
+</div>
+
+<!-- Report d'une ou plusieurs tâches -->
+<div class="modal-overlay" id="pp-overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pp-title">
+    <div class="modal-head">
+      <h2 id="pp-title">Reporter</h2>
+      <button type="button" class="modal-close" data-close aria-label="Fermer">✕</button>
+    </div>
+    <p class="pp-intro" id="pp-intro"></p>
+    <div class="field">
+      <label class="field-label" for="pp-deadline" id="pp-deadline-label">Échéance</label>
+      <input type="date" id="pp-deadline">
+      <div class="field-hint" id="pp-deadline-hint"></div>
+    </div>
+    <div class="pl-note" id="pp-summary"></div>
+    <div id="pp-preview"></div>
+    <div class="pl-actions pp-actions">
+      <button type="button" class="btn-primary" id="pp-confirm">Reporter</button>
+    </div>
+    <div class="pl-actions pp-actions" id="pp-alt-actions">
+      <button type="button" class="btn-ghost" id="pp-done">✓ Marquer comme faite</button>
+      <button type="button" class="btn-ghost" id="pp-open">Ouvrir la tâche</button>
+    </div>
+  </div>
+</div>
+
+<!-- Message éphémère (avec « Annuler ») -->
+<div class="toast" id="toast" role="status"><span id="toast-text"></span><button type="button" id="toast-undo">Annuler</button></div>
 
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -1317,6 +1497,9 @@ window.addEventListener('error', function(ev){
   var CATEGORIES = loadCategories();
   var GROUPS = loadGroups();
   var tasks = loadTasks();
+  // Tâches archivées : rangées à part, elles n'apparaissent plus dans la liste, le calendrier, le widget ni les alertes
+  var ARCHIVE_KEY = 'agenda_archived_tasks_v1';
+  var archivedTasks = loadArchivedTasks();
   var editingId = null;
   var selectedCategory = CATEGORIES.length ? CATEGORIES[0].key : 'autre';
   var selectedWeekdays = {};
@@ -1332,6 +1515,10 @@ window.addEventListener('error', function(ev){
     try{ var raw = localStorage.getItem(TASKS_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr.filter(function(t){ return t && typeof t === 'object'; }) : []; }catch(e){ return []; }
   }
   function saveTasks(){ try{ localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }catch(e){} syncTasksToWidget(); scheduleTaskNotificationsSoon(); }
+  function loadArchivedTasks(){
+    try{ var arr = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); return Array.isArray(arr) ? arr.filter(function(t){ return t && typeof t === 'object'; }) : []; }catch(e){ return []; }
+  }
+  function saveArchivedTasks(){ try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archivedTasks)); }catch(e){} archiveDirty = true; }
 
   // Mirrors the task list into native storage so the Android home screen
   // widget (which runs outside the WebView) can read it. Each task is
@@ -1871,7 +2058,7 @@ window.addEventListener('error', function(ev){
      EXPORT / IMPORT (backup & migration between devices/apps)
   ================================================================= */
    document.getElementById('export-btn').addEventListener('click', async function(){
-    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, categories: CATEGORIES, birthdays: birthdays, birthdayCfg: bdayCfg, planner: { batches: plannerBatches } };
+    var payload = { app:'agenda', version:1, exportedAt: new Date().toISOString(), tasks: tasks, archived: archivedTasks, categories: CATEGORIES, birthdays: birthdays, birthdayCfg: bdayCfg, planner: { batches: plannerBatches } };
     var json = JSON.stringify(payload, null, 2);
     var filename = 'agenda-sauvegarde-' + todayStr() + '.json';
 
@@ -1927,13 +2114,18 @@ window.addEventListener('error', function(ev){
           'Annuler = fusionner avec vos tâches actuelles (sans doublons).'
         );
 
+        var incomingArchived = Array.isArray(data.archived) ? data.archived.filter(function(t){ return t && typeof t === 'object'; }) : null;
         if(replace){
           tasks = incomingTasks;
+          if(incomingArchived) archivedTasks = incomingArchived;
         } else {
           var existingIds = {};
-          tasks.forEach(function(t){ existingIds[t.id] = true; });
-          incomingTasks.forEach(function(t){ if(!existingIds[t.id]) tasks.push(t); });
+          tasks.concat(archivedTasks).forEach(function(t){ existingIds[t.id] = true; });
+          incomingTasks.forEach(function(t){ if(!existingIds[t.id]){ tasks.push(t); existingIds[t.id] = true; } });
+          (incomingArchived || []).forEach(function(t){ if(!existingIds[t.id]){ archivedTasks.push(t); existingIds[t.id] = true; } });
         }
+        saveArchivedTasks();
+        autoArchiveTasks();
 
         if(incomingCats.length){
           var existingKeys = {};
@@ -2205,7 +2397,8 @@ window.addEventListener('error', function(ev){
     editingId = null;
   }
   document.getElementById('open-add-btn').addEventListener('click', function(){ openModal('create'); });
-  document.getElementById('fab-add').addEventListener('click', function(){ openModal('create'); });
+  // En mode sélection, le bouton ＋ devient le menu des actions groupées
+  document.getElementById('fab-add').addEventListener('click', function(){ if(selectMode) openSelMenu(); else openModal('create'); });
   document.getElementById('modal-close').addEventListener('click', closeModal);
   overlay.addEventListener('click', function(e){ if(e.target === overlay) closeModal(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal(); });
@@ -2544,6 +2737,7 @@ window.addEventListener('error', function(ev){
       metaBits += '<span style="display:inline-flex;align-items:center;gap:4px;"><span class="pie pie-sm" style="--pct:' + t.progress + ';--pie-col:' + cat.color + '"></span>' + t.progress + '%</span>';
     }
     if(t.recurrenceId){ metaBits += '<span class="recur-tag">🔁</span>'; }
+    if(t.postponed){ metaBits += '<span class="recur-tag" title="Tâche reportée">⏩' + (t.postponed > 1 ? ' ×' + t.postponed : '') + '</span>'; }
 
     var active = isTaskActiveNow(t);
     var progressHtml = active ? '<div class="card-progress-track"><div class="card-progress-fill" style="width:' + taskProgressPct(t) + '%"></div></div>' : '';
@@ -2557,13 +2751,18 @@ window.addEventListener('error', function(ev){
       '</div>' +
       '<div class="task-actions">' +
         '<button class="icon-btn" data-act="duplicate" title="Dupliquer">⧉</button>' +
+        '<button class="icon-btn" data-act="archive" title="Archiver">📥</button>' +
         '<button class="icon-btn" data-act="edit" title="Modifier">✎</button>' +
         '<button class="icon-btn danger" data-act="delete" title="Supprimer">✕</button>' +
       '</div>';
 
+    card.dataset.id = t.id;
+    if(selectedIds[t.id]) card.classList.add('is-selected');
+    wireSelectable(card, t.id);
     card.querySelector('.task-title').textContent = t.title;
     card.querySelector('.task-check').addEventListener('change', function(){ t.done = !t.done; saveTasks(); renderAll(); });
-    card.querySelector('.task-body').addEventListener('click', function(){ openModal('edit', t); });
+    card.querySelector('.task-body').addEventListener('click', function(){ openTask(t); });
+    card.querySelector('[data-act="archive"]').addEventListener('click', function(e){ e.stopPropagation(); archiveTasks([t]); });
     card.querySelector('[data-act="edit"]').addEventListener('click', function(){ openModal('edit', t); });
     card.querySelector('[data-act="duplicate"]').addEventListener('click', function(e){ e.stopPropagation(); duplicateTask(t); });
     card.querySelector('[data-act="delete"]').addEventListener('click', function(){ deleteTask(t); });
@@ -2829,17 +3028,22 @@ window.addEventListener('error', function(ev){
       click (dblclick) arrives in that window. */
   function wireOpenElement(el){
     var pendingClick = null;
+    if(selectedIds[el.dataset.open]) el.classList.add('is-selected');
+    // Les blocs déplaçables gèrent eux-mêmes l'appui long (immobile = sélection, glisser = déplacement)
+    if(!el.classList.contains('is-draggable')) wireSelectable(el, el.dataset.open);
     el.addEventListener('click', function(ev){
       ev.stopPropagation();
+      if(selectMode){ toggleSelected(el.dataset.open); return; } // (éléments non déplaçables : déjà géré par wireSelectable)
       if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
       pendingClick = setTimeout(function(){
         pendingClick = null;
         var t = tasks.find(function(x){ return x.id === el.dataset.open; });
-        if(t) openModal('edit', t);
+        if(t) openTask(t);
       }, 260);
     });
     el.addEventListener('dblclick', function(ev){
       ev.stopPropagation();
+      if(selectMode) return;
       if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
       var t = tasks.find(function(x){ return x.id === el.dataset.open; });
       if(t){ t.done = !t.done; saveTasks(); renderAll(); }
@@ -3204,7 +3408,8 @@ window.addEventListener('error', function(ev){
         }
       });
     }
-    if(!(plDrag && plDrag.active)) renderAll();
+    autoArchiveTasks();
+    if(!(plDrag && (plDrag.active || plDrag.armed))) renderAll();
   }
   setInterval(liveTick, 60000);
 
@@ -3747,42 +3952,56 @@ window.addEventListener('error', function(ev){
     var items = plItems.filter(function(it){ return it.title.trim(); }).map(function(it){
       return { pid: it.pid, title: it.title.trim(), units: it.units || 1, difficulty: it.difficulty, speed: it.speed, importance: it.importance, deadline: it.deadline || '' };
     });
-    if(!items.length){ err.textContent = 'Ajoutez au moins une tâche avec un titre.'; return; }
-    if(deadline && deadline < todayStr()){ err.textContent = 'L\u2019échéance par défaut est passée : choisissez aujourd\u2019hui ou plus tard.'; return; }
-    var lastDeadline = '';
-    for(var q = 0; q < items.length; q++){
-      var eff = items[q].deadline || deadline;
-      if(!eff){ err.textContent = 'Indiquez une échéance pour « ' + items[q].title + ' » ou une échéance par défaut.'; return; }
-      if(eff < todayStr()){ err.textContent = 'L\u2019échéance de « ' + items[q].title + ' » est passée.'; return; }
-      if(eff > lastDeadline) lastDeadline = eff;
-    }
-    if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; }) && !plannerCfg.exceptions.some(function(x){ return !x.off; })){
-      err.textContent = 'Cochez au moins un jour de disponibilité.'; return;
-    }
     var h = parseFloat(document.getElementById('pl-maxday').value);
     plannerCfg.maxPerDay = h > 0 ? Math.round(h * 60) : 0;
     var sm = parseFloat(document.getElementById('pl-sessionmax').value);
     plannerCfg.sessionMax = sm >= 0.25 ? Math.min(720, Math.round(sm * 60)) : 120;
     plReadLunch();
     savePlannerCfg();
+    var res = plComputePlan(items, deadline, plReplanId, tasks);
+    if(res.error){ err.textContent = res.error; return; }
+    plPlan = res;
+    plShowPreview();
+  });
 
+  function plExceptionMap(){
     var exMap = {};
     plannerCfg.exceptions.forEach(function(x){ exMap[x.date] = x; });
-    var busyTasks = tasks, planItems = items, replan = null;
+    return exMap;
+  }
+  // Calcule un planning (nouveau lot, ou replanification du lot replanId) en tenant compte des tâches de baseTasks.
+  // Renvoie { error } ou le plan. Sert au formulaire du planificateur et au report automatique des tâches.
+  function plComputePlan(items, deadline, replanId, baseTasks){
+    if(!items.length) return { error: 'Ajoutez au moins une tâche avec un titre.' };
+    if(deadline && deadline < todayStr()) return { error: 'L’échéance par défaut est passée : choisissez aujourd’hui ou plus tard.' };
+    var lastDeadline = '';
+    for(var q = 0; q < items.length; q++){
+      var eff = items[q].deadline || deadline;
+      if(!eff) return { error: 'Indiquez une échéance pour « ' + items[q].title + ' » ou une échéance par défaut.' };
+      if(eff < todayStr()) return { error: 'L’échéance de « ' + items[q].title + ' » est passée.' };
+      if(eff > lastDeadline) lastDeadline = eff;
+    }
+    if(!PL_DAY_ORDER.some(function(d){ return plannerCfg.avail[d].on; }) && !plannerCfg.exceptions.some(function(x){ return !x.off; })){
+      return { error: 'Cochez au moins un jour de disponibilité.' };
+    }
 
-    if(plReplanId){
+    var busyTasks = baseTasks, planItems = items, replan = null;
+
+    if(replanId){
       // Les blocs terminés ou fixés à la main sont conservés (et comptent comme du travail déjà fait) ;
       // les autres sont retirés pour libérer leurs créneaux et recalculés.
-      var batchTasks = tasks.filter(function(t){ return t.source === 'planner' && t.plannerBatchId === plReplanId; });
+      // Les blocs terminés déjà archivés comptent aussi comme du travail fait.
+      var inBatch = function(t){ return t.source === 'planner' && t.plannerBatchId === replanId; };
+      var batchTasks = baseTasks.filter(inBatch);
       var removable = batchTasks.filter(function(t){ return !t.done && !t.locked; });
       var kept = batchTasks.filter(function(t){ return t.done || t.locked; });
       var covered = {}, coveredU = {}, removeIds = {};
-      kept.forEach(function(t){
+      kept.concat(archivedTasks.filter(function(t){ return inBatch(t) && t.done; })).forEach(function(t){
         covered[t.plannerItemId] = (covered[t.plannerItemId] || 0) + (t.duration || 0);
         coveredU[t.plannerItemId] = (coveredU[t.plannerItemId] || 0) + (t.plannerUnits || 0);
       });
       removable.forEach(function(t){ removeIds[t.id] = true; });
-      busyTasks = tasks.filter(function(t){ return !removeIds[t.id]; });
+      busyTasks = baseTasks.filter(function(t){ return !removeIds[t.id]; });
       planItems = [];
       items.forEach(function(it){
         if((it.units || 1) > 1){
@@ -3794,22 +4013,22 @@ window.addEventListener('error', function(ev){
         var rem = (PLANNER_SPEED_MIN[it.speed] || 90) - (covered[it.pid] || 0);
         if(rem > 0) planItems.push(Object.assign({}, it, { minutes: rem }));
       });
-      if(!planItems.length){ err.textContent = 'Rien à replanifier : tout est déjà terminé ou fixé à la main.'; return; }
-      replan = { id: plReplanId, removeIds: removeIds, removedCount: removable.length, keptCount: kept.length };
+      if(!planItems.length) return { error: 'Rien à replanifier : tout est déjà terminé ou fixé à la main.' };
+      replan = { id: replanId, removeIds: removeIds, removedCount: removable.length, keptCount: kept.length };
     }
 
-    plPlan = plannerBuildPlan(planItems, {
-      avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: exMap,
+    var plan = plannerBuildPlan(planItems, {
+      avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: plExceptionMap(),
       startDate: todayStr(), nowMinutes: nowMinutes(),
       deadline: lastDeadline, tasks: busyTasks, maxPerDay: plannerCfg.maxPerDay, sessionMax: plannerCfg.sessionMax
     });
-    plPlan.deadline = deadline;
-    plPlan.lastDeadline = lastDeadline;
-    plPlan.items = planItems;
-    plPlan.allItems = items;
-    plPlan.replan = replan;
-    plShowPreview();
-  });
+    plan.deadline = deadline;
+    plan.lastDeadline = lastDeadline;
+    plan.items = planItems;
+    plan.allItems = items;
+    plan.replan = replan;
+    return plan;
+  }
 
   function plShowPreview(){
     var p = plPlan;
@@ -3863,35 +4082,41 @@ window.addEventListener('error', function(ev){
     plShowStep('preview');
   }
 
-  document.getElementById('pl-confirm').addEventListener('click', function(){
-    if(!plPlan || !plPlan.blocks.length) return;
+  // Inscrit un plan calculé par plComputePlan dans les tâches (sans sauvegarder ni rafraîchir l'affichage)
+  function plCommitPlan(p){
     var batchId, label;
-    if(plPlan.replan){
-      var rm = plPlan.replan.removeIds;
+    if(p.replan){
+      var rm = p.replan.removeIds;
       tasks = tasks.filter(function(t){ return !rm[t.id]; });
-      batchId = plPlan.replan.id;
+      batchId = p.replan.id;
       label = (plannerBatches[batchId] && plannerBatches[batchId].label) || ('Lot du ' + fmtShort(new Date()));
     } else {
       batchId = uid();
       label = 'Lot du ' + fmtShort(new Date());
     }
-    plPlan.blocks.forEach(function(b){
+    p.blocks.forEach(function(b){
       tasks.push({
         id: uid(), title: b.title,
         category: PLANNER_KEY, date: b.date, time: plMinToTime(b.start), duration: b.duration,
         deadline: '', endDate: '', done: false,
         source: 'planner', plannerBatchId: batchId, plannerBatchLabel: label,
-        plannerItemId: plPlan.items[b.idx].pid,
+        plannerItemId: p.items[b.idx].pid,
         plannerUnits: b.units || undefined
       });
     });
     // Les sessions d'une même tâche forment une série (occurrences) : numérotation + lien de série
-    plPlan.allItems.forEach(function(it){ plRenumberItem(batchId, it.pid, it.title, (it.units || 1) > 1); });
+    p.allItems.forEach(function(it){ plRenumberItem(batchId, it.pid, it.title, (it.units || 1) > 1); });
     plannerBatches[batchId] = {
-      label: label, deadline: plPlan.deadline,
-      items: plPlan.allItems.map(function(it){ return { pid:it.pid, title:it.title, units:it.units || 1, difficulty:it.difficulty, speed:it.speed, importance:it.importance, deadline:it.deadline || '' }; })
+      label: label, deadline: p.deadline,
+      items: p.allItems.map(function(it){ return { pid:it.pid, title:it.title, units:it.units || 1, difficulty:it.difficulty, speed:it.speed, importance:it.importance, deadline:it.deadline || '' }; })
     };
     savePlannerBatches();
+    return batchId;
+  }
+
+  document.getElementById('pl-confirm').addEventListener('click', function(){
+    if(!plPlan || !plPlan.blocks.length) return;
+    plCommitPlan(plPlan);
     currentDate = parseDateStr(plPlan.blocks[0].date);
     if(!plPlan.replan) plDraft = [plNewItem()];
     plItems = plDraft;
@@ -3961,15 +4186,23 @@ window.addEventListener('error', function(ev){
                active:false, timer:null, raf:0, rect:block.getBoundingClientRect(), touch:(e.pointerType !== 'mouse'),
                ghost:null, tip:null, track:null };
     plDrag = st;
-    if(st.touch) st.timer = setTimeout(function(){ plDragBegin(st); }, PL_LONGPRESS_MS);
+    // Appui long : le bloc est « armé ». Glisser ensuite = déplacement ; relâcher sans bouger = sélection.
+    st.timer = setTimeout(function(){ plDragArm(st); }, st.touch ? PL_LONGPRESS_MS : SEL_LONGPRESS_MS);
     document.addEventListener('pointermove', plDragMove);
     document.addEventListener('pointerup', plDragEnd);
     document.addEventListener('pointercancel', plDragAbort);
+  }
+  function plDragArm(st){
+    if(plDrag !== st || st.active) return;
+    st.armed = true;
+    st.block.classList.add('is-armed');
+    try{ if(navigator.vibrate) navigator.vibrate(15); }catch(err){}
   }
   function plDragBegin(st){
     if(plDrag !== st || st.active) return;
     st.active = true;
     clearTimeout(st.timer);
+    st.block.classList.remove('is-armed');
     var g = st.block.cloneNode(true);
     g.removeAttribute('data-open');
     g.classList.add('pl-ghost');
@@ -3993,7 +4226,8 @@ window.addEventListener('error', function(ev){
     st.x = e.clientX; st.y = e.clientY;
     if(!st.active){
       var dist = Math.sqrt(Math.pow(st.x - st.startX, 2) + Math.pow(st.y - st.startY, 2));
-      if(st.touch){ if(dist > 10) plDragAbort(); }   // le doigt a bougé avant l'appui long : c'est un défilement
+      if(st.armed){ if(dist > 6) plDragBegin(st); }
+      else if(st.touch){ if(dist > 10) plDragAbort(); }   // le doigt a bougé avant l'appui long : c'est un défilement
       else if(dist > 5) plDragBegin(st);
       return;
     }
@@ -4064,7 +4298,7 @@ window.addEventListener('error', function(ev){
       if(st.ghost && st.ghost.parentNode) st.ghost.parentNode.removeChild(st.ghost);
       if(st.tip && st.tip.parentNode) st.tip.parentNode.removeChild(st.tip);
       if(st.track) st.track.classList.remove('pl-drop-target');
-      st.block.classList.remove('is-drag-origin');
+      st.block.classList.remove('is-drag-origin', 'is-armed');
     }
     document.body.style.userSelect = '';
     plDrag = null;
@@ -4081,7 +4315,14 @@ window.addEventListener('error', function(ev){
     var wasActive = st.active;
     var target = wasActive ? plDragTarget(st) : null;
     plDragCleanup();
-    if(!wasActive) return;
+    if(!wasActive){
+      if(st.armed){
+        // appui long relâché sans bouger : la tâche entre dans la sélection (le « clic » qui suit est avalé)
+        plDragJustEnded = true; setTimeout(function(){ plDragJustEnded = false; }, 400);
+        selectTask(st.task.id);
+      }
+      return;
+    }
     plDragJustEnded = true; setTimeout(function(){ plDragJustEnded = false; }, 400);
     if(!target) return;
     var newTime = plMinToTime(target.minutes);
@@ -4092,10 +4333,12 @@ window.addEventListener('error', function(ev){
   }
   // Après un glisser-déposer, le navigateur peut émettre un « clic » : on l'avale (sinon ouverture de la fiche ou d'une nouvelle tâche)
   calendarBody.addEventListener('click', function(e){
-    if(plDragJustEnded){ e.stopPropagation(); e.preventDefault(); plDragJustEnded = false; }
+    if(plDragJustEnded){ e.stopPropagation(); e.preventDefault(); plDragJustEnded = false; return; }
+    // En mode sélection, toucher une zone vide du calendrier ne crée pas de tâche
+    if(selectMode && !e.target.closest('[data-open]')){ e.stopPropagation(); e.preventDefault(); }
   }, true);
   document.addEventListener('touchmove', function(e){
-    if(plDrag && plDrag.active && e.cancelable) e.preventDefault();
+    if(plDrag && (plDrag.active || plDrag.armed) && e.cancelable) e.preventDefault();
   }, { passive:false });
 
 
@@ -4546,8 +4789,567 @@ window.addEventListener('error', function(ev){
     $('rev-commit-btn').addEventListener('click', commit);
   })();
 
+  /* ================================================================
+     ARCHIVES · MULTI-SÉLECTION · REPORT DE TÂCHES
+  ================================================================= */
+  function openOverlay(el){ el.classList.add('is-open'); }
+  function closeOverlay(el){ el.classList.remove('is-open'); }
+  function daysBetween(a, b){ return Math.round((parseDateStr(b) - parseDateStr(a)) / 86400000); }
+  // Change la date d'une tâche ; une tâche sur plusieurs jours garde sa durée
+  function shiftTaskToDate(t, d){
+    if(t.endDate && t.endDate !== t.date) t.endDate = toDateStr(addDays(parseDateStr(d), daysBetween(t.date, t.endDate)));
+    else if(t.endDate) t.endDate = d;
+    t.date = d;
+  }
+
+  /* ---- message éphémère, avec « Annuler » facultatif ---- */
+  var toastTimer = null, toastUndo = null;
+  function showToast(msg, undo){
+    var el = document.getElementById('toast');
+    document.getElementById('toast-text').textContent = msg;
+    toastUndo = undo || null;
+    document.getElementById('toast-undo').style.display = undo ? '' : 'none';
+    el.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove('is-on'); toastUndo = null; }, 5000);
+  }
+  document.getElementById('toast-undo').addEventListener('click', function(){
+    var fn = toastUndo;
+    toastUndo = null; clearTimeout(toastTimer);
+    document.getElementById('toast').classList.remove('is-on');
+    if(fn) fn();
+  });
+
+  /* ---- Archives ---- */
+  var ARCHIVE_AFTER_DAYS = 30;
+  var archiveDirty = true;   // la liste des archives n'est reconstruite que si elle a changé (et seulement dépliée)
+  var archiveDetails = document.getElementById('archive-details');
+
+  // Dernier jour « actif » d'une tâche : sa date, sa date de fin, son échéance ou le jour où elle a été restaurée
+  function taskLastActivity(t){
+    var last = t.date || '';
+    [t.endDate, t.deadline, t.restoredAt].forEach(function(d){ if(d && d > last) last = d; });
+    return last;
+  }
+  function archiveTasks(list, auto){
+    var ids = {};
+    list.forEach(function(t){ ids[t.id] = true; });
+    var moved = tasks.filter(function(t){ return ids[t.id]; });
+    if(!moved.length) return;
+    tasks = tasks.filter(function(t){ return !ids[t.id]; });
+    var stamp = todayStr();
+    moved.forEach(function(t){
+      t.archivedAt = stamp;
+      if(auto) t.autoArchived = true; else delete t.autoArchived;
+      archivedTasks.push(t);
+      delete selectedIds[t.id];
+    });
+    saveArchivedTasks();
+    saveTasks();
+    if(!auto){
+      renderAll();
+      showToast(moved.length > 1 ? moved.length + ' tâches archivées' : 'Tâche archivée', function(){ restoreTasks(moved, true); });
+    }
+  }
+  function restoreTasks(list, silent){
+    var ids = {};
+    list.forEach(function(t){ ids[t.id] = true; });
+    var back = archivedTasks.filter(function(t){ return ids[t.id]; });
+    if(!back.length) return;
+    archivedTasks = archivedTasks.filter(function(t){ return !ids[t.id]; });
+    var stamp = todayStr();
+    // restaurer compte comme une activité : la tâche ne sera pas réarchivée avant 30 jours
+    back.forEach(function(t){ delete t.archivedAt; delete t.autoArchived; t.restoredAt = stamp; tasks.push(t); });
+    saveArchivedTasks();
+    saveTasks();
+    renderAll();
+    if(!silent) showToast(back.length > 1 ? back.length + ' tâches restaurées' : 'Tâche restaurée');
+  }
+  // Archivage automatique : toute tâche sans activité depuis plus de 30 jours
+  function autoArchiveTasks(){
+    var limit = toDateStr(addDays(new Date(), -ARCHIVE_AFTER_DAYS));
+    var old = tasks.filter(function(t){ var last = taskLastActivity(t); return last && last < limit; });
+    if(old.length) archiveTasks(old, true);
+  }
+
+  archiveDetails.addEventListener('toggle', function(){ if(archiveDetails.open){ archiveDirty = true; renderArchive(); } });
+  function renderArchive(){
+    document.getElementById('archive-count').textContent = archivedTasks.length ? '(' + archivedTasks.length + ')' : '';
+    if(!archiveDetails.open || !archiveDirty) return;
+    archiveDirty = false;
+    var wrap = document.getElementById('archive-list');
+    wrap.innerHTML = '';
+    if(!archivedTasks.length){
+      wrap.innerHTML = '<div class="empty-state" style="padding:18px 12px;">Aucune tâche archivée.</div>';
+      return;
+    }
+    var sorted = archivedTasks.slice().sort(function(a, b){
+      var da = a.date || '', db = b.date || '';
+      return da < db ? 1 : da > db ? -1 : ((b.time || '') < (a.time || '') ? -1 : 1);
+    });
+    var month = null;
+    sorted.forEach(function(t){
+      var m = (t.date || '').slice(0, 7);
+      if(m !== month){
+        month = m;
+        var head = document.createElement('div'); head.className = 'archive-month';
+        head.textContent = DATE_RE.test(t.date || '') ? fmtMonthYear(parseDateStr(t.date)) : 'Sans date';
+        wrap.appendChild(head);
+      }
+      var cat = getCategory(t.category);
+      var row = document.createElement('div');
+      row.className = 'archive-row' + (t.done ? ' done' : '');
+      row.style.setProperty('--cat', cat.color);
+      var body = document.createElement('div'); body.className = 'ar-body';
+      var ti = document.createElement('div'); ti.className = 'ar-title'; ti.textContent = t.title;
+      var meta = document.createElement('div'); meta.className = 'ar-meta';
+      meta.textContent = [DATE_RE.test(t.date || '') ? fmtShort(parseDateStr(t.date)) + (t.time ? ' · ' + t.time : '') : '', cat.label, t.done ? 'faite' : 'non faite', t.autoArchived ? 'archivée auto.' : '']
+        .filter(Boolean).join(' · ');
+      body.appendChild(ti); body.appendChild(meta);
+      var rb = document.createElement('button');
+      rb.type = 'button'; rb.className = 'icon-btn'; rb.title = 'Restaurer'; rb.setAttribute('aria-label', 'Restaurer'); rb.textContent = '↩';
+      rb.addEventListener('click', function(){ restoreTasks([t]); });
+      var db = document.createElement('button');
+      db.type = 'button'; db.className = 'icon-btn danger'; db.title = 'Supprimer définitivement'; db.setAttribute('aria-label', 'Supprimer définitivement'); db.textContent = '✕';
+      db.addEventListener('click', function(){
+        if(!confirm('Supprimer définitivement « ' + t.title + ' » ?')) return;
+        archivedTasks = archivedTasks.filter(function(x){ return x.id !== t.id; });
+        saveArchivedTasks();
+        renderArchive();
+      });
+      row.appendChild(body); row.appendChild(rb); row.appendChild(db);
+      wrap.appendChild(row);
+    });
+    var tools = document.createElement('div'); tools.className = 'archive-tools';
+    var clear = document.createElement('button'); clear.type = 'button'; clear.className = 'btn-ghost'; clear.textContent = 'Vider les archives';
+    clear.addEventListener('click', function(){
+      if(!confirm('Supprimer définitivement les ' + archivedTasks.length + ' tâche(s) archivée(s) ?')) return;
+      archivedTasks = [];
+      saveArchivedTasks();
+      renderArchive();
+    });
+    tools.appendChild(clear);
+    wrap.appendChild(tools);
+  }
+
+  /* ---- Multi-sélection ----
+     Appui long sur une tâche (liste ou calendrier) : elle est sélectionnée et le bouton ＋ devient le menu ☰.
+     Ensuite, chaque tâche touchée entre dans la sélection (ou en sort). */
+  var SEL_LONGPRESS_MS = 450;
+  var selectMode = false, selectedIds = {};
+  function selectionCount(){ return Object.keys(selectedIds).length; }
+  function selectedTasks(){ return tasks.filter(function(t){ return selectedIds[t.id]; }); }
+  function taskExists(id){ return tasks.some(function(t){ return t.id === id; }); }
+  function refreshSelectionMarks(id){
+    var on = !!selectedIds[id];
+    document.querySelectorAll('.task-card[data-id="' + id + '"], [data-open="' + id + '"]').forEach(function(el){ el.classList.toggle('is-selected', on); });
+  }
+  function selectTask(id){
+    if(!taskExists(id)) return;
+    selectedIds[id] = true;
+    selectMode = true;
+    refreshSelectionMarks(id);
+    updateSelectionUi();
+  }
+  function toggleSelected(id){
+    if(!taskExists(id)) return;
+    if(selectedIds[id]) delete selectedIds[id]; else selectedIds[id] = true;
+    refreshSelectionMarks(id);
+    updateSelectionUi();
+  }
+  function exitSelectMode(){
+    var ids = Object.keys(selectedIds);
+    selectedIds = {};
+    selectMode = false;
+    ids.forEach(refreshSelectionMarks);
+    updateSelectionUi();
+  }
+  function updateSelectionUi(){
+    Object.keys(selectedIds).forEach(function(id){ if(!taskExists(id)) delete selectedIds[id]; });
+    if(selectMode && !selectionCount()) selectMode = false;
+    var n = selectionCount(), fab = document.getElementById('fab-add');
+    document.body.classList.toggle('is-selecting', selectMode);
+    if(selectMode){
+      fab.classList.add('is-menu');
+      fab.innerHTML = '☰<span class="fab-badge">' + n + '</span>';
+      fab.setAttribute('aria-label', 'Actions sur les ' + n + ' tâches sélectionnées');
+    } else {
+      fab.classList.remove('is-menu');
+      fab.textContent = '＋';
+      fab.setAttribute('aria-label', 'Nouvelle tâche');
+    }
+    document.getElementById('sel-count').textContent = n + ' sélectionnée' + (n > 1 ? 's' : '');
+  }
+  // Appui long = sélection ; en mode sélection, un simple toucher ajoute ou retire la tâche
+  function wireSelectable(el, id){
+    var timer = null, sx = 0, sy = 0, fired = false;
+    function cancel(){ if(timer){ clearTimeout(timer); timer = null; } }
+    el.addEventListener('pointerdown', function(e){
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      fired = false; sx = e.clientX; sy = e.clientY;
+      cancel();
+      timer = setTimeout(function(){
+        timer = null; fired = true;
+        try{ if(navigator.vibrate) navigator.vibrate(15); }catch(err){}
+        if(selectMode) toggleSelected(id); else selectTask(id);
+      }, SEL_LONGPRESS_MS);
+    });
+    el.addEventListener('pointermove', function(e){
+      if(timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
+    });
+    el.addEventListener('pointerup', cancel);
+    el.addEventListener('pointercancel', cancel);
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    el.addEventListener('click', function(e){
+      if(fired){ fired = false; e.stopImmediatePropagation(); e.preventDefault(); return; }
+      if(selectMode){ e.stopImmediatePropagation(); e.preventDefault(); toggleSelected(id); }
+    }, true);
+  }
+  document.getElementById('sel-cancel').addEventListener('click', exitSelectMode);
+
+  var selMenuOverlay = document.getElementById('sel-menu-overlay');
+  var beOverlay = document.getElementById('bulk-edit-overlay');
+  var mvOverlay = document.getElementById('move-overlay');
+  var ppOverlay = document.getElementById('pp-overlay');
+  [selMenuOverlay, beOverlay, mvOverlay, ppOverlay].forEach(function(ov){
+    ov.addEventListener('click', function(e){ if(e.target === ov || e.target.closest('[data-close]')) closeOverlay(ov); });
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var open = [selMenuOverlay, beOverlay, mvOverlay, ppOverlay].filter(function(ov){ return ov.classList.contains('is-open'); })[0];
+    if(open) closeOverlay(open);
+    else if(selectMode && !document.querySelector('.modal-overlay.is-open')) exitSelectMode();
+  });
+
+  function openSelMenu(){
+    var list = selectedTasks(), n = list.length;
+    if(!n){ exitSelectMode(); return; }
+    document.getElementById('sel-menu-title').textContent = n + ' tâche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
+    selMenuOverlay.querySelector('[data-sel-act="postpone"]').disabled = !list.some(function(t){ return !t.done; });
+    openOverlay(selMenuOverlay);
+  }
+  selMenuOverlay.querySelectorAll('[data-sel-act]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var act = btn.dataset.selAct, list = selectedTasks();
+      closeOverlay(selMenuOverlay);
+      if(act === 'clear' || !list.length){ exitSelectMode(); return; }
+      if(act === 'edit'){
+        if(list.length === 1){ exitSelectMode(); openModal('edit', list[0]); }
+        else openBulkEdit(list);
+      } else if(act === 'move'){
+        openMove(list);
+      } else if(act === 'postpone'){
+        openPostpone(list.filter(function(t){ return !t.done; }), false);
+      } else if(act === 'archive'){
+        exitSelectMode();
+        archiveTasks(list);
+      } else if(act === 'delete'){
+        if(!confirm('Supprimer ' + (list.length > 1 ? 'ces ' + list.length + ' tâches' : '« ' + list[0].title + ' »') + ' ?')) return;
+        var ids = {};
+        list.forEach(function(t){ ids[t.id] = true; });
+        tasks = tasks.filter(function(t){ return !ids[t.id]; });
+        exitSelectMode();
+        saveTasks();
+        renderAll();
+        showToast(list.length > 1 ? list.length + ' tâches supprimées' : 'Tâche supprimée', function(){
+          tasks = tasks.concat(list.filter(function(t){ return !taskExists(t.id); }));
+          saveTasks();
+          renderAll();
+        });
+      }
+    });
+  });
+
+  /* ---- Modification groupée ---- */
+  var beList = [];
+  function openBulkEdit(list){
+    beList = list;
+    var sel = document.getElementById('be-category');
+    sel.innerHTML = '';
+    [{ key:'', label:'Inchangée' }].concat(CATEGORIES).forEach(function(c){
+      var o = document.createElement('option'); o.value = c.key; o.textContent = c.label; sel.appendChild(o);
+    });
+    ['be-time', 'be-duration', 'be-deadline'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('be-deadline-clear').checked = false;
+    document.getElementById('be-done').value = '';
+    document.getElementById('be-error').textContent = '';
+    document.getElementById('bulk-edit-title').textContent = 'Modifier ' + list.length + ' tâches';
+    openOverlay(beOverlay);
+  }
+  document.getElementById('be-apply').addEventListener('click', function(){
+    var err = document.getElementById('be-error');
+    var cat = document.getElementById('be-category').value;
+    var time = document.getElementById('be-time').value;
+    var durRaw = document.getElementById('be-duration').value;
+    var dur = parseInt(durRaw, 10);
+    var dl = document.getElementById('be-deadline').value;
+    var clearDl = document.getElementById('be-deadline-clear').checked;
+    var state = document.getElementById('be-done').value;
+    err.textContent = '';
+    if(durRaw && !(dur >= 5 && dur <= 1440)){ err.textContent = 'La durée doit être comprise entre 5 et 1440 minutes.'; return; }
+    var changed = 0;
+    beList.forEach(function(t){
+      if(tasks.indexOf(t) < 0) return;
+      var before = JSON.stringify(t);
+      if(cat) t.category = cat;
+      if(t.time && !t.reminder){
+        if(TIME_RE.test(time)) t.time = time;
+        if(durRaw) t.duration = dur;
+        if(t.source === 'planner' && (TIME_RE.test(time) || durRaw)) t.locked = true;
+      }
+      if(clearDl) t.deadline = '';
+      else if(dl && !t.reminder) t.deadline = dl;
+      if(state === 'done') t.done = true;
+      else if(state === 'todo') t.done = false;
+      if(JSON.stringify(t) !== before) changed++;
+    });
+    closeOverlay(beOverlay);
+    exitSelectMode();
+    saveTasks();
+    renderAll();
+    showToast(changed ? changed + ' tâche' + (changed > 1 ? 's' : '') + ' modifiée' + (changed > 1 ? 's' : '') : 'Aucune modification');
+  });
+
+  /* ---- Déplacement groupé ---- */
+  var mvList = [];
+  function openMove(list){
+    mvList = list;
+    document.getElementById('mv-date').value = todayStr();
+    document.getElementById('mv-error').textContent = '';
+    document.getElementById('move-title').textContent = 'Déplacer ' + (list.length > 1 ? list.length + ' tâches' : '« ' + list[0].title + ' »');
+    openOverlay(mvOverlay);
+  }
+  document.getElementById('mv-apply').addEventListener('click', function(){
+    var d = document.getElementById('mv-date').value;
+    if(!DATE_RE.test(d)){ document.getElementById('mv-error').textContent = 'Choisissez une date.'; return; }
+    var n = 0;
+    mvList.forEach(function(t){
+      if(tasks.indexOf(t) < 0) return;
+      shiftTaskToDate(t, d);
+      if(t.source === 'planner') t.locked = true;   // comme un déplacement à la main : conservé par une replanification
+      n++;
+    });
+    closeOverlay(mvOverlay);
+    exitSelectMode();
+    saveTasks();
+    currentDate = parseDateStr(d);
+    renderAll();
+    showToast(n + ' tâche' + (n > 1 ? 's' : '') + ' déplacée' + (n > 1 ? 's' : '') + ' au ' + fmtShort(currentDate));
+  });
+
+  /* ---- Report ----
+     Toucher une tâche d'un jour passé non faite propose de la reporter. Une tâche ordinaire est replacée dans le
+     premier créneau libre (disponibilités du planificateur, tâches déjà posées), avant son échéance. Un bloc du
+     planificateur fait replanifier tout son lot : la priorisation est recalculée selon les échéances. */
+  var ppList = [], ppSingle = false, ppResult = null;
+  var PP_SEARCH_DAYS = 60;
+  function isPastUndone(t){
+    if(t.done || !t.date) return false;
+    var last = (t.endDate && t.endDate > t.date) ? t.endDate : t.date;
+    return last < todayStr();
+  }
+  function openTask(t){ if(isPastUndone(t)) openPostpone([t], true); else openModal('edit', t); }
+  function ppBatchMeta(t){
+    return (t.source === 'planner' && t.plannerBatchId && plannerBatches[t.plannerBatchId]) ? plannerBatches[t.plannerBatchId] : null;
+  }
+  // Échéance actuelle d'une tâche (pour un bloc du planificateur : celle de sa tâche dans le lot)
+  function ppOwnDeadline(t){
+    var meta = ppBatchMeta(t);
+    if(!meta) return t.deadline || '';
+    var it = (meta.items || []).filter(function(x){ return x.pid === t.plannerItemId; })[0];
+    return (it && it.deadline) || meta.deadline || '';
+  }
+  // Premier créneau libre d'au moins « minutes », du jour fromDate (à partir de fromMin) jusqu'à l'échéance
+  function ppFindSlot(minutes, fromDate, fromMin, deadline, baseTasks){
+    if(deadline && deadline < fromDate) return null;
+    var last = deadline || toDateStr(addDays(parseDateStr(fromDate), PP_SEARCH_DAYS));
+    var slots = plannerFreeSlots({
+      avail: plannerCfg.avail, lunch: plannerCfg.lunch, exceptions: plExceptionMap(),
+      startDate: fromDate, nowMinutes: fromMin, deadline: last, tasks: baseTasks
+    });
+    for(var i = 0; i < slots.length; i++){
+      if(slots[i].end - slots[i].start >= minutes) return { date: slots[i].date, start: slots[i].start };
+    }
+    return null;
+  }
+
+  function ppCompute(list, dlValue, single){
+    var today = todayStr();
+    var res = { moves: [], plans: [], errors: [], warns: [] };
+    var ids = {};
+    list.forEach(function(t){ ids[t.id] = true; });
+    // Copie de travail : une tâche reportée libère son ancien créneau ; un bloc du planificateur reporté
+    // n'est plus « fixé », pour que la replanification de son lot le replace.
+    var sim = [];
+    tasks.forEach(function(t){
+      if(!ids[t.id]) sim.push(t);
+      else if(ppBatchMeta(t)) sim.push(Object.assign({}, t, { locked: false }));
+    });
+    var normals = [], batches = {}, batchOrder = [];
+    list.forEach(function(t){
+      if(!ppBatchMeta(t)){ normals.push(t); return; }
+      if(!batches[t.plannerBatchId]){ batches[t.plannerBatchId] = []; batchOrder.push(t.plannerBatchId); }
+      batches[t.plannerBatchId].push(t);
+    });
+    function effDeadline(t){
+      if(single) return dlValue;
+      var own = t.deadline || '';
+      return own >= today ? own : dlValue;
+    }
+
+    // 1) tâches ordinaires : l'échéance la plus proche d'abord
+    normals.sort(function(a, b){
+      var da = effDeadline(a) || '9999-99-99', db = effDeadline(b) || '9999-99-99';
+      return da < db ? -1 : da > db ? 1 : (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    });
+    normals.forEach(function(t){
+      var dl = effDeadline(t), past = isPastUndone(t);
+      var fromDate = past ? today : toDateStr(addDays(parseDateStr(t.date), 1));
+      var mv = { task: t, newDeadline: (single && dl && dl !== t.deadline) ? dl : '' };
+      if(!t.time || t.reminder){
+        // journée entière ou rappel : simplement aujourd'hui (ou le lendemain pour une tâche à venir)
+        mv.date = fromDate; mv.time = '';
+      } else {
+        var before = t.travelBefore || 0;
+        var slot = ppFindSlot(before + (t.duration || 30) + (t.travelAfter || 0), fromDate, past ? nowMinutes() : null, dl, sim);
+        if(!slot){
+          res.errors.push('« ' + t.title + ' » : aucun créneau libre ' + (dl ? 'avant le ' + fmtShort(parseDateStr(dl)) : 'dans les ' + PP_SEARCH_DAYS + ' prochains jours') + ' (vérifiez vos disponibilités dans le planificateur).');
+          return;
+        }
+        mv.date = slot.date; mv.time = plMinToTime(slot.start + before);
+        sim.push(Object.assign({}, t, { date: mv.date, time: mv.time }));
+      }
+      res.moves.push(mv);
+    });
+
+    // 2) blocs du planificateur : on replanifie leur lot (la tâche reportée reprend sa place selon son échéance)
+    var fallback = dlValue || toDateStr(addDays(new Date(), 14));
+    batchOrder.forEach(function(bid){
+      var meta = plannerBatches[bid], label = meta.label || 'Lot planifié';
+      var pids = {};
+      batches[bid].forEach(function(t){ pids[t.plannerItemId] = true; });
+      var defaultDl = (meta.deadline && meta.deadline >= today) ? meta.deadline : '';
+      var items = (meta.items || []).map(function(it){
+        var d = (it.deadline && it.deadline >= today) ? it.deadline : '';
+        if(single && pids[it.pid] && dlValue) d = dlValue;
+        else if(!d && !defaultDl) d = fallback;
+        return { pid: it.pid || uid(), title: it.title || '', units: it.units || 1, difficulty: it.difficulty || 2, speed: it.speed || 2, importance: it.importance || 2, deadline: d };
+      });
+      var p = plComputePlan(items, defaultDl, bid, sim);
+      if(p.error){ res.errors.push(label + ' : ' + p.error); return; }
+      if(!p.blocks.length){ res.errors.push(label + ' : aucun créneau libre avant l’échéance.'); return; }
+      p.label = label;
+      p.ppCount = batches[bid].length;
+      res.plans.push(p);
+      p.unplaced.forEach(function(u){ res.warns.push('« ' + u.title + ' » ne tient pas avant le ' + fmtShort(parseDateStr(u.deadline)) + ' et ne sera pas replacée.'); });
+      // le calcul des lots suivants tient compte de ce nouveau planning
+      sim = sim.filter(function(t){ return !p.replan.removeIds[t.id]; });
+      p.blocks.forEach(function(b){ sim.push({ id: 'pp-sim', date: b.date, time: plMinToTime(b.start), duration: b.duration }); });
+    });
+    return res;
+  }
+
+  function ppRecompute(){
+    ppResult = ppCompute(ppList, document.getElementById('pp-deadline').value, ppSingle);
+    var r = ppResult, sum = document.getElementById('pp-summary'), html = '';
+    var ok = r.moves.length + r.plans.length;
+    var notes = r.errors.concat(r.warns);
+    if(!ok){
+      sum.className = 'pl-note warn';
+      sum.textContent = notes.join(' ') || 'Rien à reporter.';
+    } else {
+      sum.className = 'pl-note ' + (notes.length ? 'warn' : 'ok');
+      sum.textContent = notes.length ? notes.join(' ') : (ok > 1 || r.plans.length ? 'Voici le nouveau placement proposé :' : 'Nouveau créneau proposé :');
+    }
+    r.moves.forEach(function(mv){
+      var d = parseDateStr(mv.date), t = mv.task;
+      var when = fmtShortDay(d) + ' ' + fmtShort(d) + (mv.time ? ' · ' + mv.time + '–' + plMinToTime(timeToMinutes(mv.time) + (t.duration || 30)) : ' · journée');
+      html += '<div class="pl-block" style="--pl-color:' + getCategory(t.category).color + ';"><span class="t">' + escapeHtml(when) + '</span><span>' + escapeHtml(t.title) + '</span></div>';
+    });
+    r.plans.forEach(function(p){
+      html += '<div class="pp-item-head">🔁 ' + escapeHtml(p.label) + ' replanifié · ' + p.blocks.length + ' bloc' + (p.blocks.length > 1 ? 's' : '') + '</div>';
+      p.blocks.forEach(function(b){
+        var d = parseDateStr(b.date);
+        var title = b.title + (b.parts > 1 ? plSessionSuffix(b.part, b.parts, b.unitFrom, b.unitTo) : '');
+        html += '<div class="pl-block" style="--pl-color:' + plannerCfg.color + ';"><span class="t">' + escapeHtml(fmtShortDay(d) + ' ' + fmtShort(d) + ' · ' + plMinToTime(b.start)) + '</span><span>' + escapeHtml(title) + '</span></div>';
+      });
+    });
+    document.getElementById('pp-preview').innerHTML = html;
+    document.getElementById('pp-confirm').disabled = !ok;
+  }
+
+  function openPostpone(list, single){
+    if(!list.length) return;
+    ppList = list; ppSingle = single;
+    var today = todayStr();
+    var dlIn = document.getElementById('pp-deadline');
+    var dlHint = document.getElementById('pp-deadline-hint');
+    dlIn.min = today;
+    if(single){
+      var t = list[0], own = ppOwnDeadline(t), planner = !!ppBatchMeta(t);
+      document.getElementById('pp-title').textContent = 'Tâche non faite';
+      document.getElementById('pp-intro').textContent = '« ' + t.title + ' » était prévue le ' + fmtFull(parseDateStr(t.date)).toLowerCase() + (t.time ? ' à ' + t.time : '') + ' et n’a pas été marquée comme faite. Voulez-vous la reporter ?';
+      document.getElementById('pp-deadline-label').textContent = 'Échéance';
+      dlIn.value = own >= today ? own : (planner ? toDateStr(addDays(new Date(), 7)) : '');
+      if(own && own < today) dlHint.textContent = 'L’échéance du ' + fmtShort(parseDateStr(own)) + ' est dépassée : ' + (planner ? 'choisissez-en une nouvelle.' : 'choisissez-en une nouvelle, ou laissez vide pour prendre le premier créneau libre.');
+      else dlHint.textContent = planner ? 'Le lot de cette tâche est replanifié : les tâches sont repriorisées selon leurs échéances.' : 'La tâche est replacée avant cette échéance (vide = premier créneau libre).';
+      document.getElementById('pp-alt-actions').style.display = '';
+    } else {
+      document.getElementById('pp-title').textContent = 'Reporter ' + list.length + ' tâche' + (list.length > 1 ? 's' : '');
+      document.getElementById('pp-intro').textContent = 'Les tâches passées sont replacées à partir de maintenant, les autres à partir du lendemain de leur date, dans vos créneaux libres. Les blocs du planificateur font replanifier leur lot.';
+      document.getElementById('pp-deadline-label').textContent = 'Échéance des tâches sans échéance à venir';
+      dlIn.value = '';
+      dlHint.textContent = 'Facultatif. Sans date, les blocs du planificateur sans échéance valable visent dans 14 jours.';
+      document.getElementById('pp-alt-actions').style.display = 'none';
+    }
+    ppRecompute();
+    openOverlay(ppOverlay);
+  }
+  ['input', 'change'].forEach(function(ev){ document.getElementById('pp-deadline').addEventListener(ev, ppRecompute); });
+
+  document.getElementById('pp-confirm').addEventListener('click', function(){
+    var r = ppResult;
+    if(!r || !(r.moves.length + r.plans.length)) return;
+    var first = '';
+    r.moves.forEach(function(mv){
+      var t = mv.task;
+      if(tasks.indexOf(t) < 0) return;
+      shiftTaskToDate(t, mv.date);
+      if(mv.time) t.time = mv.time;
+      if(mv.newDeadline) t.deadline = mv.newDeadline;
+      t.postponed = (t.postponed || 0) + 1;
+      if(!first || mv.date < first) first = mv.date;
+    });
+    r.plans.forEach(function(p){
+      plCommitPlan(p);
+      if(!first || p.blocks[0].date < first) first = p.blocks[0].date;
+    });
+    var n = r.moves.length;
+    r.plans.forEach(function(p){ n += p.ppCount; });
+    closeOverlay(ppOverlay);
+    if(selectMode) exitSelectMode();
+    saveTasks();
+    buildCategoryFilters();
+    if(first) currentDate = parseDateStr(first);
+    renderAll();
+    showToast((n > 1 ? n + ' tâches reportées' : 'Tâche reportée') + (r.plans.length ? (r.plans.length > 1 ? ', lots replanifiés' : ', lot replanifié') : ''));
+  });
+  document.getElementById('pp-done').addEventListener('click', function(){
+    var t = ppList[0];
+    closeOverlay(ppOverlay);
+    if(!t || tasks.indexOf(t) < 0) return;
+    t.done = true;
+    saveTasks();
+    renderAll();
+  });
+  document.getElementById('pp-open').addEventListener('click', function(){
+    var t = ppList[0];
+    closeOverlay(ppOverlay);
+    if(t && tasks.indexOf(t) >= 0) openModal('edit', t);
+  });
+
   /* ---------------- init ---------------- */
-  function renderAll(){ renderList(); renderCalendar(); renderPlannerBatches(); }
+  function renderAll(){ renderList(); renderArchive(); renderCalendar(); renderPlannerBatches(); updateSelectionUi(); }
 
   function applyStartupParams(){
     try{
@@ -4576,6 +5378,7 @@ window.addEventListener('error', function(ev){
   safeInit('catégories (réglages)', renderCategoryManager);
   safeInit('groupes (réglages)', renderGroupManager);
   safeInit('anniversaires (réglages)', renderBirthdayManager);
+  safeInit('archivage automatique', autoArchiveTasks);
   safeInit('onglets', applyStartupParams);
   safeInit('affichage', renderAll);
   safeInit('widget', syncTasksToWidget);
