@@ -36,6 +36,7 @@
     { version:'1.1.0', date:'novembre 2026', items:[
       'Nouvel abonnement Premium (version de démonstration, aucun paiement réel)',
       'Carte « Mon abonnement » dans les Réglages',
+      'Widgets Semaine, Mois et Liste inclus dans Premium (le widget Jour reste gratuit)',
       'Aide & contact : questions fréquentes et signalement de problème'
     ]}
   ];
@@ -76,13 +77,22 @@
     return defaultState();
   }
   var state = loadState();
+  var lastWidgetVal = null;
 
   function saveState(){
     try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }catch(e){}
     // Copie pour les widgets Android (lue côté Java via SharedPreferences « CapacitorStorage »).
     try{
       var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences;
-      if(P) P.set({ key:'agenda_premium', value: isPremium() ? '1' : '0' });
+      var val = isPremium() ? '1' : '0';
+      if(P && val !== lastWidgetVal){
+        lastWidgetVal = val;
+        // Puis on redessine les widgets (verrouillés ou non) sans attendre Android.
+        P.set({ key:'agenda_premium', value: val }).then(function(){
+          var W = window.Capacitor.Plugins.WidgetBridge;
+          if(W) W.refresh().catch(function(){});
+        });
+      }
     }catch(e){}
   }
 
@@ -522,6 +532,20 @@
     renderSubCard();
   }
 
+  /* Un widget verrouillé a été touché : MainActivity a posé la clé
+     « agenda_open_paywall » ; on ouvre la page d'abonnement. */
+  function checkWidgetPaywallRequest(){
+    try{
+      var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences;
+      if(!P) return;
+      P.get({ key:'agenda_open_paywall' }).then(function(r){
+        if(!r || !r.value) return;
+        P.remove({ key:'agenda_open_paywall' });
+        if(!isPremium()) openPaywall(FEATURES[r.value] ? r.value : 'widgets');
+      }).catch(function(){});
+    }catch(e){}
+  }
+
   function init(){
     refreshState();
     saveState();
@@ -530,6 +554,10 @@
     buildHelpCard();
     applyUi();
     maybeShowNews();
+    checkWidgetPaywallRequest();
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible'){ refreshState(); saveState(); applyUi(); checkWidgetPaywallRequest(); }
+    });
   }
 
   // API publique, pour le reste de l'appli.

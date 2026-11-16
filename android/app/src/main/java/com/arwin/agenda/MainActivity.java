@@ -3,6 +3,7 @@ package com.arwin.agenda;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -14,6 +15,9 @@ public class MainActivity extends BridgeActivity {
     // Doit rester identique à TASK_CHANGE_CHANNEL dans index.html.
     private static final String TASK_CHANNEL_ID = "agenda-bip-v4";
 
+    /** Extra posé par un widget verrouillé : ouvrir la page d'abonnement. */
+    static final String EXTRA_OPEN_PAYWALL = "open_paywall";
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Local (non-npm) plugins must be registered manually, before the
@@ -21,6 +25,28 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WidgetBridgePlugin.class);
         super.onCreate(savedInstanceState);
         createTaskNotificationChannel();
+        handlePaywallIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handlePaywallIntent(intent);
+    }
+
+    /**
+     * Transmet la demande au JavaScript via le stockage Preferences
+     * (clé « agenda_open_paywall »), lu par premium.js au démarrage
+     * et à chaque retour au premier plan.
+     */
+    private void handlePaywallIntent(Intent intent) {
+        if (intent == null) return;
+        String feature = intent.getStringExtra(EXTRA_OPEN_PAYWALL);
+        if (feature == null) return;
+        intent.removeExtra(EXTRA_OPEN_PAYWALL);
+        getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
+                .edit().putString("agenda_open_paywall", feature).apply();
     }
 
     /**

@@ -33,6 +33,7 @@ final class AgendaWidgetCommon {
     static final String CAPACITOR_PREFS = "CapacitorStorage";
     static final String TASKS_KEY = "agenda_widget_tasks";
     static final String STATE_PREFS = "agenda_widget_state";
+    static final String PREMIUM_KEY = "agenda_premium";
     static final long RESET_DELAY_MS = 2 * 60 * 1000; // retour auto à aujourd'hui
 
     // Palette (identique aux aperçus)
@@ -237,6 +238,21 @@ final class AgendaWidgetCommon {
         Intent i = new Intent(ctx, MainActivity.class);
         return PendingIntent.getActivity(ctx, id * 100 + 1, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Ouvre l'appli directement sur la page d'abonnement (widget verrouillé). */
+    static PendingIntent openPaywall(Context ctx, int id) {
+        Intent i = new Intent(ctx, MainActivity.class);
+        i.putExtra(MainActivity.EXTRA_OPEN_PAYWALL, "widgets");
+        i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(ctx, id * 100 + 5, i,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Statut Premium écrit par premium.js (clé « agenda_premium » = "1"). */
+    static boolean isPremium(Context ctx) {
+        SharedPreferences prefs = ctx.getSharedPreferences(CAPACITOR_PREFS, Context.MODE_PRIVATE);
+        return "1".equals(prefs.getString(PREMIUM_KEY, "0"));
     }
 
     /** Décalage (en semaines / mois) mémorisé, avec retour auto si inactif trop longtemps. */
