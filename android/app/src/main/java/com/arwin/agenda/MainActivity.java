@@ -47,7 +47,12 @@ public class MainActivity extends BridgeActivity {
      * On le signale à analytics.js via le stockage Preferences.
      */
     private void flagAnalyticsReady() {
-        boolean ready = getResources().getIdentifier("google_app_id", "string", getPackageName()) != 0;
+        // Une bibliothèque peut déclarer la ressource sans valeur : on exige un identifiant réel (« 1:…:android:… »).
+        boolean ready = false;
+        try {
+            int id = getResources().getIdentifier("google_app_id", "string", getPackageName());
+            ready = id != 0 && getString(id).contains(":android:");
+        } catch (Exception ignored) { }
         getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
                 .edit().putString("agenda_analytics_ready", ready ? "1" : "0").apply();
     }
