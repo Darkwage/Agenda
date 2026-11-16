@@ -1,9 +1,11 @@
 // Service worker — permet à Agenda de fonctionner hors-ligne une fois installée.
-var CACHE_NAME = 'agenda-cache-v2';
+var CACHE_NAME = 'agenda-cache-v3';
 var CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './premium.js',
+  './premium.css',
   './icon-192.png',
   './icon-512.png',
   './icon-180.png',

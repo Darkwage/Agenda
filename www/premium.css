@@ -1,0 +1,117 @@
+/* ==========================================================================
+   Agenda — Premium, abonnement, aide & contact
+   Reprend les variables du thème défini dans index.html (:root).
+   ========================================================================== */
+
+/* ---------- badge Premium sur les cartes des générateurs ---------- */
+.premium-badge{
+  margin-left:auto; flex:none;
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 9px; border-radius:999px;
+  background:var(--accent-soft); color:var(--accent-dark);
+  font-family:var(--font-body); font-size:11px; font-weight:600; letter-spacing:.02em;
+}
+.premium-badge::before{ content:'🔒'; font-size:10px; }
+body.is-premium .premium-badge{ display:none; }
+
+/* ---------- bandeau mode démo ---------- */
+.pw-demo{
+  display:flex; align-items:center; gap:8px;
+  background:#FBF3E2; border:1px dashed #D9B871; color:#7A5B17;
+  border-radius:var(--radius-s); padding:7px 10px; margin-bottom:14px;
+  font-size:12px; font-weight:500;
+}
+
+/* ---------- page d'abonnement (paywall) ---------- */
+#paywall-overlay .modal-card{ max-width:460px; }
+.pw-hero{ text-align:center; margin:2px 0 16px; }
+.pw-hero .pw-mark{
+  width:52px; height:52px; margin:0 auto 10px; border-radius:16px;
+  background:var(--accent); color:var(--accent-ink);
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+  box-shadow:0 10px 24px -10px rgba(47,93,80,.6);
+}
+.pw-hero h3{ font-family:var(--font-display); font-weight:600; font-size:22px; line-height:1.2; margin:0 0 6px; }
+.pw-hero p{ margin:0; color:var(--ink-soft); font-size:13.5px; }
+.pw-context{
+  background:var(--accent-soft); color:var(--accent-dark); border-radius:var(--radius-m);
+  padding:10px 12px; font-size:13px; font-weight:500; margin-bottom:14px; text-align:center;
+}
+.pw-context:empty{ display:none; }
+
+.pw-features{ list-style:none; margin:0 0 16px; padding:0; }
+.pw-features li{
+  display:flex; gap:10px; align-items:flex-start;
+  padding:7px 0; border-bottom:1px solid var(--line-soft); font-size:13.5px;
+}
+.pw-features li:last-child{ border-bottom:none; }
+.pw-features .pw-ico{ flex:none; width:22px; text-align:center; }
+.pw-features small{ display:block; color:var(--ink-faint); font-size:11.5px; }
+
+.pw-plans{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.pw-plan{
+  position:relative; text-align:left; cursor:pointer;
+  border:1.5px solid var(--line); border-radius:var(--radius-m); background:var(--surface);
+  padding:14px 12px 12px; color:var(--ink); font-family:var(--font-body);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.pw-plan.is-selected{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.pw-plan .pw-plan-name{ font-size:12px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; }
+.pw-plan .pw-plan-price{ font-family:var(--font-display); font-size:21px; font-weight:600; margin:4px 0 2px; }
+.pw-plan .pw-plan-sub{ font-size:11.5px; color:var(--ink-faint); }
+.pw-plan .pw-plan-tag{
+  position:absolute; top:-9px; right:10px;
+  background:var(--accent); color:var(--accent-ink);
+  font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+}
+
+.pw-cta{ margin-bottom:8px; }
+.pw-cta[disabled]{ opacity:.6; }
+.pw-secondary{
+  display:block; width:100%; text-align:center; margin-bottom:12px;
+  background:none; border:none; color:var(--accent-dark); font-size:13px; font-weight:600; padding:6px;
+}
+.pw-legal{ font-size:11px; color:var(--ink-faint); text-align:center; line-height:1.5; }
+.pw-legal a, .pw-legal button{
+  color:var(--ink-soft); background:none; border:none; padding:0; font-size:11px; text-decoration:underline;
+}
+
+/* ---------- carte « Mon abonnement » ---------- */
+.sub-card .sub-status{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.sub-card .sub-pill{
+  padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:700; letter-spacing:.02em;
+  background:var(--paper-deep); color:var(--ink-soft);
+}
+.sub-card .sub-pill.on{ background:var(--accent); color:var(--accent-ink); }
+.sub-card .sub-pill.warn{ background:#FBF3E2; color:#7A5B17; }
+.sub-card .sub-line{ font-size:12.5px; color:var(--ink-soft); }
+.sub-card .sub-actions{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.sub-card .sub-actions .btn-ghost{ width:100%; }
+.sub-demo-tools{ margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
+.sub-demo-tools .field-hint{ margin:0 0 8px; }
+.sub-demo-tools .row{ display:flex; gap:8px; }
+.sub-demo-tools .row .btn-ghost{ flex:1; }
+
+/* ---------- aide & contact ---------- */
+.help-list{ display:flex; flex-direction:column; gap:8px; }
+.help-list .btn-ghost{ width:100%; text-align:left; display:flex; align-items:center; gap:8px; }
+.faq details{ border-top:1px solid var(--line-soft); padding:9px 0; }
+.faq details:first-child{ border-top:none; }
+.faq summary{ cursor:pointer; font-size:13px; font-weight:600; list-style:none; }
+.faq summary::-webkit-details-marker{ display:none; }
+.faq summary::after{ content:'＋'; float:right; color:var(--ink-faint); }
+.faq details[open] summary::after{ content:'－'; }
+.faq p{ margin:6px 0 0; font-size:12.5px; color:var(--ink-soft); }
+.app-version{ margin-top:12px; font-size:11px; color:var(--ink-faint); text-align:center; }
+
+/* ---------- nouveautés ---------- */
+.news-version{ font-family:var(--font-display); font-size:15px; font-weight:600; margin:14px 0 6px; }
+.news-version:first-child{ margin-top:0; }
+.news-version span{ font-family:var(--font-body); font-size:11.5px; color:var(--ink-faint); font-weight:400; margin-left:6px; }
+.news-list{ margin:0 0 4px; padding-left:18px; font-size:13px; color:var(--ink-soft); }
+.news-list li{ margin:3px 0; }
+
+/* ---------- petite feuille de choix (gestion démo) ---------- */
+.pw-sheet-actions{ display:flex; flex-direction:column; gap:8px; }
+.pw-sheet-actions .btn-ghost{ width:100%; padding:11px; font-size:13.5px; }
+.pw-sheet-actions .danger{ color:var(--danger); border-color:#E7C3C3; }
