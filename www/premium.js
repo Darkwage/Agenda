@@ -53,6 +53,7 @@
   var DAY = 24 * 3600 * 1000;
 
   function $(id){ return document.getElementById(id); }
+  function track(key){ try{ if(window.AgendaStats) window.AgendaStats.track(key); }catch(e){} }
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function fmtDate(ts){
     try{ return new Date(ts).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); }
@@ -271,6 +272,7 @@
   function openPaywall(featureKey, onUnlock){
     if(!paywall) buildPaywall();
     pendingAction = onUnlock || null;
+    track('pw:open');
     var f = featureKey && FEATURES[featureKey];
     $('pw-context').textContent = f ? f.pitch : '';
     renderPaywall();
@@ -281,6 +283,7 @@
     var cta = $('pw-cta');
     cta.disabled = true; cta.textContent = 'Traitement…';
     Provider.purchase(selectedPlan, withTrial).then(function(){
+      track(state.status === 'trial' ? 'pw:trial' : 'pw:purchase');
       closeOv(paywall);
       applyUi();
       toast(state.status === 'trial'
@@ -295,6 +298,7 @@
   }
 
   function doRestore(){
+    track('pw:restore');
     Provider.restore().then(function(ok){
       if(ok){ closeOv(paywall); applyUi(); toast('Abonnement restauré.'); }
       else toast('Aucun abonnement trouvé pour ce compte Google.');
@@ -349,14 +353,8 @@
       var a = e.target.closest('[data-sub]'); if(!a) return;
       var act = a.getAttribute('data-sub');
       if(act === 'discover') openPaywall(null);
-      else if(act === 'manage') Provider.manage();
+      else if(act === 'manage'){ track('sub:manage'); Provider.manage(); }
       else if(act === 'restore') doRestore();
-      else if(act === 'demo-free'){ state = defaultState(); saveState(); applyUi(); toast('Retour à la version gratuite (démo).'); }
-      else if(act === 'demo-expire'){
-        if(state.status === 'free'){ toast('Aucun abonnement en cours.'); return; }
-        state.status = 'cancelled'; state.expiresAt = Date.now() - 1; refreshState(); applyUi();
-        toast('Abonnement expiré (démo).');
-      }
     });
   }
 
@@ -385,11 +383,7 @@
       ? '<button type="button" class="btn-ghost" data-sub="manage">Gérer l’abonnement</button>'
       : '<button type="button" class="btn-primary" data-sub="discover">Découvrir Premium</button>' +
         '<button type="button" class="btn-ghost" data-sub="restore">Restaurer mes achats</button>';
-    var demo = CONFIG.demo
-      ? '<div class="sub-demo-tools"><p class="field-hint">🧪 Outils de démonstration (retirés à la commercialisation)</p>' +
-        '<div class="row"><button type="button" class="btn-ghost" data-sub="demo-free">Repasser en gratuit</button>' +
-        '<button type="button" class="btn-ghost" data-sub="demo-expire">Simuler l’expiration</button></div></div>'
-      : '';
+    var demo = '';
     sec.innerHTML =
       '<h2 class="section-title">Mon abonnement</h2>' +
       '<div class="sub-status">' + pill + '</div>' +
@@ -509,6 +503,7 @@
     sec.addEventListener('click', function(e){
       var b = e.target.closest('[data-help]'); if(!b) return;
       var h = b.getAttribute('data-help');
+      track('help:' + h);
       if(h === 'faq') openFaq(); else if(h === 'report') reportProblem(); else if(h === 'news') openNews();
     });
   }
@@ -541,6 +536,7 @@
       P.get({ key:'agenda_open_paywall' }).then(function(r){
         if(!r || !r.value) return;
         P.remove({ key:'agenda_open_paywall' });
+        track('widget:locked-tap');
         if(!isPremium()) openPaywall(FEATURES[r.value] ? r.value : 'widgets');
       }).catch(function(){});
     }catch(e){}
@@ -566,7 +562,17 @@
     require: require,
     openPaywall: openPaywall,
     state: function(){ return JSON.parse(JSON.stringify(state)); },
-    config: CONFIG
+    config: CONFIG,
+    openNews: function(){ openNews(); },
+    // Réservé à l'onglet Admin, et seulement en mode démo : en production,
+    // le statut ne doit venir que de Google Play.
+    _admin: !CONFIG.demo ? null : {
+      setState: function(next){
+        state = Object.assign(defaultState(), state, next);
+        refreshState(); lastWidgetVal = null; saveState(); applyUi();
+      },
+      reset: function(){ state = defaultState(); lastWidgetVal = null; saveState(); applyUi(); }
+    }
   };
 
   function safe(){ try{ init(); }catch(err){ if(window.__showJsError) window.__showJsError('premium : ' + (err && err.message ? err.message : err)); } }
