@@ -168,3 +168,6 @@ nav.view-tabs .admin-tab.active{ border-style:solid !important; }
 .consent-list li{ padding:3px 0; }
 .consent-small{ font-size:11px; color:var(--ink-faint); margin:0 0 14px; }
 .analytics-toggle{ margin-top:12px; font-size:12.5px; }
+.admin-input{ width:100%; margin:8px 0 0; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-s); font-size:13px; background:var(--surface); color:var(--ink); }
+#admin-remote-cfg .btn-ghost{ margin-top:8px; }
+#admin-remote .admin-kpis{ margin-bottom:4px; }

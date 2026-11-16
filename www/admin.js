@@ -298,7 +298,14 @@
       '<section class="card">' +
         '<h3 class="admin-h3">Statistiques de tous les utilisateurs</h3>' +
         '<div id="admin-global" class="sub-line"></div>' +
+        '<div id="admin-remote"></div>' +
+        '<details class="admin-details" id="admin-remote-cfg"><summary>Connexion au script de synthèse</summary>' +
+          '<input type="url" id="admin-remote-url" class="admin-input" placeholder="URL du script (…/exec)">' +
+          '<input type="password" id="admin-remote-token" class="admin-input" placeholder="Code secret (TOKEN)">' +
+          '<button type="button" class="btn-ghost" data-a="remote-save" style="width:100%;">Enregistrer</button>' +
+        '</details>' +
         '<div class="admin-grid admin-grid-2">' +
+          '<button type="button" class="btn-primary" data-a="remote-load" style="grid-column:1 / -1;">Actualiser la synthèse</button>' +
           '<button type="button" class="btn-ghost" data-a="firebase">Ouvrir Firebase Analytics</button>' +
           '<button type="button" class="btn-ghost" data-a="consent-reset">Redemander le consentement</button>' +
         '</div>' +
@@ -339,6 +346,14 @@
         }
       }
       else if(act === 'copy'){ copyStats(); }
+      else if(act === 'remote-save'){
+        try{
+          localStorage.setItem(REMOTE_KEY, JSON.stringify({ url: $('admin-remote-url').value.trim(), token: $('admin-remote-token').value.trim() }));
+        }catch(e2){}
+        $('admin-remote-cfg').open = false;
+        loadRemote();
+      }
+      else if(act === 'remote-load'){ loadRemote(); }
       else if(act === 'firebase'){
         var l = document.createElement('a'); l.href = 'https://console.firebase.google.com/'; l.target = '_blank'; l.rel = 'noopener';
         document.body.appendChild(l); l.click(); l.remove();
@@ -457,7 +472,68 @@
     el.textContent = txt;
   }
 
-  function renderAll(){ renderStatus(); renderStats(); renderGlobal(); renderContent(); }
+  /* ---------- synthèse de tous les utilisateurs (script Apps Script) ---------- */
+  var REMOTE_KEY = 'agenda_admin_remote';
+  function remoteCfg(){ return readJson(REMOTE_KEY, {}) || {}; }
+  // 'nav_calendar' -> libellé « Onglet Calendrier »
+  var EVENT_LABELS = {};
+  Object.keys(LABELS).forEach(function(k){ EVENT_LABELS[k.toLowerCase().replace(/[^a-z0-9_]+/g, '_')] = LABELS[k]; });
+  EVENT_LABELS.agenda_open = 'Ouverture de l\u2019appli';
+
+  function loadRemote(){
+    var el = $('admin-remote'); if(!el) return;
+    var cfg = remoteCfg();
+    if($('admin-remote-url')){ $('admin-remote-url').value = cfg.url || ''; $('admin-remote-token').value = cfg.token || ''; }
+    if(!cfg.url || !cfg.token){
+      el.innerHTML = '<p class="field-hint">Renseignez l\u2019URL du script et le code secret ci-dessous pour afficher la synthèse.</p>';
+      if($('admin-remote-cfg')) $('admin-remote-cfg').open = true;
+      return;
+    }
+    el.innerHTML = '<p class="field-hint">Chargement…</p>';
+    fetch(cfg.url + (cfg.url.indexOf('?') < 0 ? '?' : '&') + 'days=30&token=' + encodeURIComponent(cfg.token))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderRemote(d); })
+      .catch(function(){ el.innerHTML = '<p class="field-hint">Impossible de joindre le script (connexion, URL ou déploiement à vérifier).</p>'; });
+  }
+
+  function renderRemote(d){
+    var el = $('admin-remote'); if(!el) return;
+    if(!d || d.error){ el.innerHTML = '<p class="field-hint">Erreur : ' + esc(d && d.error || 'réponse vide') + '</p>'; return; }
+    var events = (d.events || []).filter(function(e){ return EVENT_LABELS[e.name]; });
+    var byName = {}; events.forEach(function(e){ byName[e.name] = e; });
+    var html = '<div class="admin-kpis">' +
+      kpi(d.activeUsers ? d.activeUsers.d7 : 0, 'utilisateurs actifs (7 j)') +
+      kpi(d.activeUsers ? d.activeUsers.d30 : 0, 'utilisateurs actifs (30 j)') +
+      kpi(byName.pw_trial ? byName.pw_trial.users : 0, 'essais démarrés') +
+      kpi(byName.pw_purchase ? byName.pw_purchase.users : 0, 'abonnements') +
+      '<div class="admin-since">' + esc(d.days) + ' derniers jours · mis à jour le ' + esc(new Date(d.generatedAt).toLocaleString('fr-FR')) + '</div></div>';
+
+    var feats = events.filter(function(e){ return !/^(pw_|sub_|widget_|agenda_open)/.test(e.name); })
+      .sort(function(a, b){ return b.users - a.users; });
+    var max = feats.length ? feats[0].users : 0;
+    html += '<h4 class="admin-h4">Fonctionnalités (nombre d\u2019utilisateurs)</h4>' + (feats.length
+      ? feats.slice(0, 10).map(function(e){ return bar(EVENT_LABELS[e.name], e.users, max, e.count + ' utilisations'); }).join('')
+      : '<p class="field-hint">Pas encore de données (délai Google : jusqu\u2019à 24 h).</p>');
+
+    var seen = {}; feats.forEach(function(e){ seen[e.name] = 1; });
+    var unused = Object.keys(EVENT_LABELS).filter(function(n){ return !seen[n] && !/^(pw_|sub_|widget_|agenda_open)/.test(n); });
+    if(unused.length) html += '<h4 class="admin-h4">Utilisées par personne</h4><div class="admin-chips">' +
+      unused.map(function(n){ return '<span class="admin-chip">' + esc(EVENT_LABELS[n]) + '</span>'; }).join('') + '</div>';
+
+    var o = byName.pw_open ? byName.pw_open.users : 0, t = byName.pw_trial ? byName.pw_trial.users : 0, p = byName.pw_purchase ? byName.pw_purchase.users : 0;
+    html += '<h4 class="admin-h4">Parcours d\u2019abonnement</h4>' +
+      bar('Ont vu la page d\u2019abonnement', o, Math.max(o, 1)) +
+      bar('Ont démarré l\u2019essai', t, Math.max(o, 1), o ? Math.round(t / o * 100) + ' % des visiteurs' : '') +
+      bar('Se sont abonnés', p, Math.max(o, 1), o ? Math.round(p / o * 100) + ' % des visiteurs' : '');
+
+    if(d.plans && d.plans.length){
+      var pm = Math.max.apply(null, d.plans.map(function(x){ return x.users; }));
+      html += '<h4 class="admin-h4">Utilisateurs par statut</h4>' + d.plans.map(function(x){ return bar(x.plan, x.users, pm); }).join('');
+    }
+    el.innerHTML = html;
+  }
+
+  function renderAll(){ renderStatus(); renderStats(); renderGlobal(); renderContent(); loadRemote(); }
 
   function copyStats(){
     var data = {
