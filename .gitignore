@@ -1,1 +1,3 @@
 node_modules/
+# Configuration Firebase : fournie par le secret GitHub GOOGLE_SERVICES_JSON
+android/app/google-services.json

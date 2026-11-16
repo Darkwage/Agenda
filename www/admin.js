@@ -113,6 +113,7 @@
     var keys = Object.keys(stats.days);
     if(keys.length > 400){ keys.sort().slice(0, keys.length - 400).forEach(function(k){ delete stats.days[k]; }); }
     saveStats();
+    try{ if(window.AgendaAnalytics) window.AgendaAnalytics.log(key); }catch(e){}
     if(adminVisible()) renderStats();
   }
 
@@ -295,6 +296,15 @@
       '</section>' +
 
       '<section class="card">' +
+        '<h3 class="admin-h3">Statistiques de tous les utilisateurs</h3>' +
+        '<div id="admin-global" class="sub-line"></div>' +
+        '<div class="admin-grid admin-grid-2">' +
+          '<button type="button" class="btn-ghost" data-a="firebase">Ouvrir Firebase Analytics</button>' +
+          '<button type="button" class="btn-ghost" data-a="consent-reset">Redemander le consentement</button>' +
+        '</div>' +
+      '</section>' +
+
+      '<section class="card">' +
         '<h3 class="admin-h3">Contenu créé dans l’appli</h3>' +
         '<div id="admin-content"></div>' +
       '</section>' +
@@ -329,6 +339,11 @@
         }
       }
       else if(act === 'copy'){ copyStats(); }
+      else if(act === 'firebase'){
+        var l = document.createElement('a'); l.href = 'https://console.firebase.google.com/'; l.target = '_blank'; l.rel = 'noopener';
+        document.body.appendChild(l); l.click(); l.remove();
+      }
+      else if(act === 'consent-reset'){ if(window.AgendaAnalytics) window.AgendaAnalytics.resetConsent(); setTimeout(renderGlobal, 300); }
       else if(act === 'hide-tab'){
         if(window.confirm('Masquer l’onglet Admin ? (7 touchers sur le logo pour le retrouver)')) removeTab();
       }
@@ -431,7 +446,18 @@
     }).join('') + '</table>';
   }
 
-  function renderAll(){ renderStatus(); renderStats(); renderContent(); }
+  function renderGlobal(){
+    var el = $('admin-global'); if(!el) return;
+    var st = window.AgendaAnalytics ? window.AgendaAnalytics.status() : { ready:false };
+    var txt;
+    if(!st.ready) txt = 'Firebase n’est pas encore configuré dans cette version : ajoutez le secret GOOGLE_SERVICES_JSON sur GitHub puis recompilez. Les statistiques ci-dessus restent locales.';
+    else if(st.consent === 'granted') txt = 'Firebase actif sur ce téléphone (consentement donné). Les chiffres de tous les utilisateurs ayant accepté sont dans la console Firebase › Analytics › Events (délai d’affichage : jusqu’à 24 h).';
+    else if(st.consent === 'denied') txt = 'Firebase configuré, mais statistiques refusées sur ce téléphone.';
+    else txt = 'Firebase configuré : consentement pas encore demandé sur ce téléphone.';
+    el.textContent = txt;
+  }
+
+  function renderAll(){ renderStatus(); renderStats(); renderGlobal(); renderContent(); }
 
   function copyStats(){
     var data = {

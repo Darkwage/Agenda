@@ -26,6 +26,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         createTaskNotificationChannel();
         handlePaywallIntent(getIntent());
+        flagAnalyticsReady();
     }
 
     @Override
@@ -40,6 +41,17 @@ public class MainActivity extends BridgeActivity {
      * (clé « agenda_open_paywall »), lu par premium.js au démarrage
      * et à chaque retour au premier plan.
      */
+    /**
+     * Firebase n'est utilisable que si google-services.json était présent à la
+     * compilation (le plugin Gradle génère alors la ressource « google_app_id »).
+     * On le signale à analytics.js via le stockage Preferences.
+     */
+    private void flagAnalyticsReady() {
+        boolean ready = getResources().getIdentifier("google_app_id", "string", getPackageName()) != 0;
+        getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
+                .edit().putString("agenda_analytics_ready", ready ? "1" : "0").apply();
+    }
+
     private void handlePaywallIntent(Intent intent) {
         if (intent == null) return;
         String feature = intent.getStringExtra(EXTRA_OPEN_PAYWALL);

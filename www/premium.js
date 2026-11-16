@@ -430,7 +430,7 @@
     ['Comment résilier mon abonnement ?', 'Ouvrez Google Play › votre profil › Paiements et abonnements › Abonnements › Agenda. Vous gardez Premium jusqu’à la fin de la période payée.'],
     ['Que deviennent mes données si j’arrête Premium ?', 'Rien n’est supprimé : vos tâches, vos programmes et vos lots déjà planifiés restent affichés. Seule la création de nouveaux plannings automatiques est réservée à Premium.'],
     ['J’ai changé de téléphone, comment retrouver Premium ?', 'Connectez-vous avec le même compte Google, puis Réglages › Mon abonnement › Restaurer mes achats. Pour vos tâches, utilisez Sauvegarde › Exporter puis Importer.'],
-    ['Mes données sont-elles envoyées quelque part ?', 'Non. Vos tâches restent sur votre téléphone ; aucune donnée n’est envoyée à un serveur.'],
+    ['Mes données sont-elles envoyées quelque part ?', 'Vos tâches, rendez-vous et anniversaires restent sur votre téléphone : ils ne sont jamais envoyés. Si vous l\u2019acceptez, seules des statistiques anonymes d\u2019utilisation (quelles fonctionnalités servent) sont partagées via Google Analytics pour Firebase. Vous pouvez changer d\u2019avis dans Réglages › Aide & contact.'],
     ['Le widget ne se met pas à jour', 'Ouvrez l’appli une fois : le widget se resynchronise. Si le problème persiste, retirez-le et ajoutez-le à nouveau.']
   ];
 

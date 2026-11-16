@@ -45,6 +45,17 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Recreate google-services.json (Firebase) from secrets
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "google-services.json créé : statistiques Firebase actives"
+          else
+            echo "Secret GOOGLE_SERVICES_JSON absent : APK compilé sans statistiques Firebase"
+          fi
+
       - name: Recreate the permanent signing key from secrets
         run: echo "${{ secrets.AGENDA_KEYSTORE_BASE64 }}" | base64 -d > android/app/agenda-signing.keystore
 
