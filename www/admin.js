@@ -201,22 +201,21 @@
   function adminVisible(){ return panel && panel.classList.contains('is-on'); }
 
   function installTab(){
-    var nav = document.querySelector('nav.view-tabs.mobile-only');
-    if(nav && !tabBtn){
+    // Bouton rond en haut à droite de l'en-tête (hors de la barre d'onglets).
+    var header = document.querySelector('.app-header');
+    if(header && !tabBtn){
       tabBtn = document.createElement('button');
       tabBtn.type = 'button';
-      tabBtn.className = 'admin-tab';
-      tabBtn.setAttribute('data-admin', '1');
-      tabBtn.textContent = '⚙︎';
+      tabBtn.className = 'admin-btn';
+      tabBtn.textContent = '\u2699\ufe0e';
       tabBtn.setAttribute('aria-label', 'Admin');
       tabBtn.title = 'Admin';
-      nav.classList.add('has-admin');
-      nav.appendChild(tabBtn);
-      tabBtn.addEventListener('click', showAdmin);
-      // Quand un autre onglet est choisi, on referme l'Admin.
-      nav.addEventListener('click', function(e){
-        var b = e.target.closest('button[data-panel]');
-        if(b) hideAdmin();
+      header.appendChild(tabBtn);
+      tabBtn.addEventListener('click', function(){ if(adminVisible()) closeToCalendar(); else showAdmin(); });
+      // Quand un onglet est choisi, on referme l'Admin.
+      var nav = document.querySelector('nav.view-tabs.mobile-only');
+      if(nav) nav.addEventListener('click', function(e){
+        if(e.target.closest('button[data-panel]')) hideAdmin();
       });
     }
     if(!panel) buildPanel();
@@ -224,7 +223,7 @@
 
   function removeTab(){
     hideAdmin();
-    if(tabBtn){ if(tabBtn.parentNode) tabBtn.parentNode.classList.remove('has-admin'); tabBtn.remove(); tabBtn = null; }
+    if(tabBtn){ tabBtn.remove(); tabBtn = null; }
     try{ localStorage.removeItem(ADMIN_KEY); }catch(e){}
     var cal = document.querySelector('nav.view-tabs button[data-panel="calendar"]');
     if(cal) cal.click();
@@ -236,13 +235,18 @@
       var el = $(id); if(el) el.classList.add('hide-mobile');
     });
     var left = $('panel-left'); if(left) left.classList.remove('mobile-gen');
-    document.querySelectorAll('nav.view-tabs.mobile-only button').forEach(function(b){
-      b.classList.toggle('active', b === tabBtn);
-    });
+    document.querySelectorAll('nav.view-tabs.mobile-only button').forEach(function(b){ b.classList.remove('active'); });
+    if(tabBtn) tabBtn.classList.add('active');
     panel.classList.add('is-on');
     document.body.classList.add('admin-open');
     renderAll();
     window.scrollTo(0, 0);
+  }
+
+  function closeToCalendar(){
+    hideAdmin();
+    var cal = document.querySelector('nav.view-tabs button[data-panel="calendar"]');
+    if(cal) cal.click();
   }
 
   function hideAdmin(){
@@ -327,11 +331,7 @@
       var a = e.target.closest('[data-a]'); if(!a) return;
       var act = a.getAttribute('data-a');
       var P = window.Premium;
-      if(act === 'close'){
-        hideAdmin();
-        var cal = document.querySelector('nav.view-tabs button[data-panel="calendar"]');
-        if(cal) cal.click(); else location.reload();
-      }
+      if(act === 'close'){ closeToCalendar(); }
       else if(act === 'reset-trial'){ if(P && P._admin){ P._admin.setState({ trialUsed:false }); renderStatus(); } }
       else if(act === 'paywall'){ if(P) P.openPaywall(null); }
       else if(act === 'news'){ if(P && P.openNews) P.openNews(); }
