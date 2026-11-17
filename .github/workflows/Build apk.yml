@@ -73,3 +73,19 @@ jobs:
         with:
           name: agenda-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Version de publication pour le Play Store (fichier .aab signé).
+      - name: Build release bundle (Play Store)
+        working-directory: android
+        env:
+          AGENDA_KEYSTORE_PATH: agenda-signing.keystore
+          AGENDA_KEYSTORE_PASSWORD: ${{ secrets.AGENDA_KEYSTORE_PASSWORD }}
+          AGENDA_KEY_ALIAS: ${{ secrets.AGENDA_KEY_ALIAS }}
+          AGENDA_KEY_PASSWORD: ${{ secrets.AGENDA_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: agenda-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab

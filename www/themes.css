@@ -257,3 +257,4 @@ body.is-premium .theme-lock{ display:none; }
 .font-choice b{ display:block; font-size:18px; font-weight:600; line-height:1.1; }
 .font-choice span{ font-size:11px; color:var(--ink-soft); }
 :root[data-theme="nuages"] .view-tabs.mobile-only{ background:rgba(255,255,255,.6); }
+:root[data-theme="pixel"] #calendar-label{ font-size:15px; line-height:1.5; }

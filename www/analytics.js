@@ -104,7 +104,7 @@
             '<li>✓ Aucun identifiant publicitaire, aucune publicité</li>' +
             '<li>✓ Modifiable à tout moment : Réglages › Aide &amp; contact</li>' +
           '</ul>' +
-          '<p class="consent-small">Service utilisé : Google Analytics pour Firebase.</p>' +
+          '<p class="consent-small">Service utilisé : Google Analytics pour Firebase. Vous avez moins de 15 ans ? Demandez l\u2019accord d\u2019un parent avant d\u2019accepter.</p>' +
           '<button type="button" class="btn-primary" data-c="yes">Accepter</button>' +
           '<button type="button" class="pw-secondary" data-c="no" style="margin-top:6px;">Refuser</button>' +
         '</div>';

@@ -75,6 +75,11 @@
     if(e.font.id === 'serif') root.removeAttribute('data-font'); else root.setAttribute('data-font', e.font.id);
     var meta = document.querySelector('meta[name="theme-color"]');
     if(meta) meta.setAttribute('content', e.theme.color);
+    // Icônes de la barre d'état claires sur thème sombre, foncées sur thème clair.
+    try{
+      var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SystemBars;
+      if(SB && SB.setStyle) SB.setStyle({ style: e.theme.mode === 'dark' ? 'DARK' : 'LIGHT' }).catch(function(){});
+    }catch(err){}
     syncWidgets();
   }
 

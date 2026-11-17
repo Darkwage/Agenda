@@ -25,7 +25,14 @@
   function utcIso(ms){ var d = new Date(ms); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
   function parseIso(s){ var p = String(s).split('-'); return { y:+p[0], m:+p[1], d:+p[2] }; }
   function track(k){ try{ if(window.AgendaStats) window.AgendaStats.track(k); }catch(e){} }
-  function plugin(){ var P = window.Capacitor && window.Capacitor.Plugins; return P && P.CalendarSync ? P.CalendarSync : null; }
+  function plugin(){
+    var C = window.Capacitor; if(!C) return null;
+    // Plugin natif maison : son proxy JS doit être déclaré (comme WidgetBridge).
+    if(!(C.Plugins && C.Plugins.CalendarSync) && C.registerPlugin && C.isNativePlatform && C.isNativePlatform()){
+      try{ C.registerPlugin('CalendarSync', {}); }catch(e){}
+    }
+    return C.Plugins && C.Plugins.CalendarSync ? C.Plugins.CalendarSync : null;
+  }
   function isNative(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
   function premium(){ return !!(window.Premium && window.Premium.isPremium()); }
 

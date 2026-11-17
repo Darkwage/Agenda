@@ -11,7 +11,8 @@ android {
         // build, so each APK has a strictly higher version than the last -
         // required for Android to accept it as a clean update in place.
         versionCode (System.getenv("GITHUB_RUN_NUMBER") ? System.getenv("GITHUB_RUN_NUMBER").toInteger() : 1)
-        versionName "1.0"
+        // Numéro de version lu dans package.json (« version »), à aligner avec appVersion dans www/premium.js
+        versionName new groovy.json.JsonSlurper().parse(rootProject.file("../package.json")).version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,6 +22,10 @@ android {
     }
     buildTypes {
         release {
+            // Signé avec la même clé que les APK de test (clé d'importation pour le Play Store)
+            if (System.getenv("AGENDA_KEYSTORE_PATH") != null && file(System.getenv("AGENDA_KEYSTORE_PATH")).exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -37,6 +42,12 @@ android {
     if (agendaKeystorePath != null && file(agendaKeystorePath).exists()) {
         signingConfigs {
             debug {
+                storeFile file(agendaKeystorePath)
+                storePassword System.getenv("AGENDA_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("AGENDA_KEY_ALIAS")
+                keyPassword System.getenv("AGENDA_KEY_PASSWORD")
+            }
+            release {
                 storeFile file(agendaKeystorePath)
                 storePassword System.getenv("AGENDA_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("AGENDA_KEY_ALIAS")

@@ -19,7 +19,10 @@
      CONFIGURATION — à adapter
      ---------------------------------------------------------------------- */
   var CONFIG = {
-    demo: true,                          // true = achats simulés
+    demo: true,                          // true = achats simulés ; false = vrai paiement Google Play (RevenueCat)
+    revenueCatApiKey: '',                // clé « Public SDK key » Android de RevenueCat (commence par goog_)
+    entitlementId: 'premium',            // identifiant du droit « Premium » défini dans RevenueCat
+    playPackage: 'com.arwin.agenda',
     appVersion: '1.3.0',                 // à aligner sur versionName (android/app/build.gradle)
     supportEmail: '',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
     trialDays: 14,
@@ -173,6 +176,83 @@
   };
 
   /* ----------------------------------------------------------------------
+     FOURNISSEUR RÉEL — Google Play Billing via RevenueCat
+     Actif quand CONFIG.demo = false et qu'une clé RevenueCat est renseignée.
+     Pré-requis dans RevenueCat : un droit (entitlement) « premium » et une
+     offre (offering) courante avec les packages Mensuel et Annuel.
+     ---------------------------------------------------------------------- */
+  var rcPackages = {}, rcReady = null;
+  function RC(){
+    var C = window.Capacitor; if(!C) return null;
+    if(!(C.Plugins && C.Plugins.Purchases) && C.registerPlugin){ try{ C.registerPlugin('Purchases', {}); }catch(e){} }
+    return C.Plugins && C.Plugins.Purchases ? C.Plugins.Purchases : null;
+  }
+  function rcInit(){
+    if(rcReady) return rcReady;
+    var P = RC();
+    if(!P || !CONFIG.revenueCatApiKey) return Promise.reject(new Error('Paiement indisponible'));
+    rcReady = P.configure({ apiKey: CONFIG.revenueCatApiKey }).catch(function(e){ rcReady = null; throw e; });
+    return rcReady;
+  }
+  /* Traduit les droits RevenueCat en état d'abonnement de l'appli. */
+  function applyCustomerInfo(info){
+    var ent = info && info.entitlements && info.entitlements.active && info.entitlements.active[CONFIG.entitlementId];
+    if(ent && ent.isActive !== false){
+      var pid = String(ent.productIdentifier || '').toLowerCase();
+      state.plan = /year|annu|annual|12/.test(pid) ? 'annual' : 'monthly';
+      state.expiresAt = ent.expirationDateMillis || (ent.expirationDate ? Date.parse(ent.expirationDate) : null);
+      state.startedAt = state.startedAt || Date.now();
+      state.trialUsed = true;
+      state.status = ent.periodType === 'TRIAL' ? 'trial' : (ent.willRenew === false ? 'cancelled' : 'active');
+    } else if(state.status !== 'free'){
+      state.status = 'expired';
+    }
+    saveState();
+    return state;
+  }
+  var RealProvider = {
+    getOfferings: function(){
+      return rcInit().then(function(){ return RC().getOfferings(); }).then(function(o){
+        var pk = (o && o.current && o.current.availablePackages) || [];
+        rcPackages = {};
+        pk.forEach(function(p){
+          if(p.packageType === 'MONTHLY') rcPackages.monthly = p;
+          if(p.packageType === 'ANNUAL') rcPackages.annual = p;
+        });
+        ['monthly', 'annual'].forEach(function(k){
+          var p = rcPackages[k]; if(!p || !p.product) return;
+          CONFIG.plans[k].price = p.product.priceString || CONFIG.plans[k].price;
+          var opt = p.product.defaultOption;
+          CONFIG.plans[k].hasTrial = !!(opt && opt.freePhase);
+        });
+        return CONFIG.plans;
+      }).catch(function(){ return CONFIG.plans; });
+    },
+    purchase: function(planId){
+      return rcInit().then(function(){
+        var pkg = rcPackages[planId];
+        if(!pkg) throw new Error('Offre introuvable');
+        return RC().purchasePackage({ aPackage: pkg });
+      }).then(function(res){ return applyCustomerInfo(res && res.customerInfo); });
+    },
+    restore: function(){
+      return rcInit().then(function(){ return RC().restorePurchases(); })
+        .then(function(res){ applyCustomerInfo(res && res.customerInfo); return isPremium(); });
+    },
+    refresh: function(){
+      return rcInit().then(function(){ return RC().getCustomerInfo(); })
+        .then(function(res){ applyCustomerInfo(res && res.customerInfo); applyUi(); }).catch(function(){});
+    },
+    manage: function(){
+      var a = document.createElement('a');
+      a.href = 'https://play.google.com/store/account/subscriptions?package=' + encodeURIComponent(CONFIG.playPackage);
+      a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+  };
+  if(!CONFIG.demo) Provider = RealProvider;
+
+  /* ----------------------------------------------------------------------
      PETITS OUTILS D'INTERFACE
      ---------------------------------------------------------------------- */
   var toastTimer = null;
@@ -244,7 +324,8 @@
     });
     $('pw-cta').addEventListener('click', function(){ doPurchase(!state.trialUsed); });
     $('pw-nottrial').addEventListener('click', function(){
-      if(state.trialUsed) doRestore(); else doPurchase(false);
+      var withTrialShown = CONFIG.demo ? !state.trialUsed : !!(CONFIG.plans[selectedPlan] || {}).hasTrial;
+      if(withTrialShown) doPurchase(false); else doRestore();
     });
     $('pw-legal').addEventListener('click', function(e){
       if(e.target.id === 'pw-restore') doRestore();
@@ -262,16 +343,17 @@
           '<div class="pw-plan-sub">' + esc(p.per) + ' · ' + esc(p.sub) + '</div></button>';
       }).join('');
       var p = plans[selectedPlan];
+      var showTrial = CONFIG.demo ? !state.trialUsed : !!p.hasTrial;
       var cta = $('pw-cta'), alt = $('pw-nottrial');
       cta.disabled = false;
-      if(!state.trialUsed){
+      if(showTrial){
         cta.textContent = 'Essayer gratuitement ' + CONFIG.trialDays + ' jours';
         alt.textContent = 'S’abonner sans essai';
       } else {
         cta.textContent = 'S’abonner — ' + p.price + ' ' + p.per;
         alt.textContent = 'Restaurer mes achats';
       }
-      var legal = !state.trialUsed
+      var legal = showTrial
         ? 'Gratuit pendant ' + CONFIG.trialDays + ' jours, puis ' + p.price + ' ' + p.per + '. '
         : '';
       legal += 'Renouvellement automatique, résiliable à tout moment depuis Google Play. ';
@@ -306,9 +388,10 @@
         : 'Bienvenue dans Agenda Premium !');
       var act = pendingAction; pendingAction = null;
       if(act) setTimeout(act, 250);
-    }, function(){
+    }, function(err){
       renderPaywall();
-      toast('Le paiement n’a pas abouti.');
+      var cancelled = err && (err.userCancelled || /cancel/i.test(String(err.message || err.code || '')));
+      if(!cancelled) toast('Le paiement n’a pas abouti.');
     });
   }
 
@@ -568,8 +651,12 @@
     applyUi();
     maybeShowNews();
     checkWidgetPaywallRequest();
+    if(!CONFIG.demo && Provider.refresh) Provider.refresh();
     document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'visible'){ refreshState(); saveState(); applyUi(); checkWidgetPaywallRequest(); }
+      if(document.visibilityState === 'visible'){
+        refreshState(); saveState(); applyUi(); checkWidgetPaywallRequest();
+        if(!CONFIG.demo && Provider.refresh) Provider.refresh();
+      }
     });
   }
 

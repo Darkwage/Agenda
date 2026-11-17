@@ -1,5 +1,5 @@
 // Service worker — permet à Agenda de fonctionner hors-ligne une fois installée.
-var CACHE_NAME = 'agenda-cache-v7';
+var CACHE_NAME = 'agenda-cache-v9';
 var CORE_ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,21 @@ var CORE_ASSETS = [
   './analytics.js',
   './theme.js',
   './calendar-sync.js',
+  './backup.js',
+  './fonts/fonts.css',
+  './fonts/fraunces-latin-opsz-italic.woff2',
+  './fonts/fraunces-latin-opsz-normal.woff2',
+  './fonts/fredoka-latin-500-normal.woff2',
+  './fonts/fredoka-latin-600-normal.woff2',
+  './fonts/fredoka-latin-700-normal.woff2',
+  './fonts/ibm-plex-mono-latin-400-normal.woff2',
+  './fonts/ibm-plex-mono-latin-500-normal.woff2',
+  './fonts/inter-latin-400-normal.woff2',
+  './fonts/inter-latin-500-normal.woff2',
+  './fonts/inter-latin-600-normal.woff2',
+  './fonts/inter-latin-700-normal.woff2',
+  './fonts/press-start-2p-latin-400-normal.woff2',
+  './fonts/righteous-latin-400-normal.woff2',
   './themes.css',
   './premium.css',
   './icon-192.png',
