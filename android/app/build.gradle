@@ -22,10 +22,6 @@ android {
     }
     buildTypes {
         release {
-            // Signé avec la même clé que les APK de test (clé d'importation pour le Play Store)
-            if (System.getenv("AGENDA_KEYSTORE_PATH") != null && file(System.getenv("AGENDA_KEYSTORE_PATH")).exists()) {
-                signingConfig signingConfigs.release
-            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -54,6 +50,8 @@ android {
                 keyPassword System.getenv("AGENDA_KEY_PASSWORD")
             }
         }
+        // Version de publication signée avec la même clé (clé d'importation pour le Play Store)
+        buildTypes.release.signingConfig signingConfigs.release
     }
 }
 
