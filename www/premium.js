@@ -23,7 +23,7 @@
     revenueCatApiKey: '',                // clé « Public SDK key » Android de RevenueCat (commence par goog_)
     entitlementId: 'premium',            // identifiant du droit « Premium » défini dans RevenueCat
     playPackage: 'com.arwin.agenda',
-    appVersion: '1.3.0',                 // à aligner sur versionName (android/app/build.gradle)
+    appVersion: '1.4.0',                 // à aligner sur versionName (android/app/build.gradle)
     supportEmail: '',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
     trialDays: 14,
     termsUrl: '',                        // CGU (à rédiger avant la commercialisation)
@@ -36,6 +36,9 @@
 
   /* Nouveautés affichées après une mise à jour (la plus récente en premier). */
   var CHANGELOG = [
+    { version:'1.4.0', date:'novembre 2026', items:[
+      'Nouveau tutoriel animé pour prendre l\u2019appli en main, à retrouver dans Réglages › Aide & contact'
+    ]},
     { version:'1.3.0', date:'novembre 2026', items:[
       'Agendas du téléphone : vos rendez-vous Google, Samsung ou Outlook s\u2019affichent dans Agenda (Réglages › Agendas du téléphone)',
       'Les générateurs évitent automatiquement ces rendez-vous',

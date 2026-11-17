@@ -59,7 +59,7 @@
       ['pw:restore', 'Restauration d’achat'], ['sub:manage', 'Gérer l’abonnement'], ['widget:locked-tap', 'Widget verrouillé touché']
     ]],
     ['Aide', [
-      ['help:faq', 'Questions fréquentes'], ['help:report', 'Signaler un problème'], ['help:news', 'Nouveautés']
+      ['help:tutorial', 'Tutoriel (rouvert)'], ['tutorial:done', 'Tutoriel terminé'], ['tutorial:skip', 'Tutoriel passé'], ['help:faq', 'Questions fréquentes'], ['help:report', 'Signaler un problème'], ['help:news', 'Nouveautés']
     ]]
   ];
   var LABELS = {};
