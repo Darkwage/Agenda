@@ -67,6 +67,30 @@
     if(e.font.id === 'serif') root.removeAttribute('data-font'); else root.setAttribute('data-font', e.font.id);
     var meta = document.querySelector('meta[name="theme-color"]');
     if(meta) meta.setAttribute('content', e.theme.color);
+    syncWidgets();
+  }
+
+  /* Transmet les couleurs du thème aux widgets Android (lues par AgendaWidgetCommon.loadTheme). */
+  var lastWidgetTheme = null, syncTimer = null;
+  function syncWidgets(){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function(){
+      var P = window.Capacitor && window.Capacitor.Plugins;
+      if(!P || !P.Preferences || !document.body) return;
+      var cs = getComputedStyle(document.documentElement);
+      var v = function(n){ return (cs.getPropertyValue(n) || '').trim(); };
+      var e = effective();
+      var data = JSON.stringify({
+        id: e.theme.id, mode: e.theme.mode,
+        paper: v('--paper'), surface: v('--surface'), ink: v('--ink'), inkSoft: v('--ink-soft'), inkFaint: v('--ink-faint'),
+        line: v('--line'), lineSoft: v('--line-soft'), accent: v('--accent'), accentSoft: v('--accent-soft'), accentInk: v('--accent-ink')
+      });
+      if(data === lastWidgetTheme) return;
+      lastWidgetTheme = data;
+      P.Preferences.set({ key:'agenda_widget_theme', value:data }).then(function(){
+        if(P.WidgetBridge) P.WidgetBridge.refresh().catch(function(){});
+      }).catch(function(){});
+    }, 150);
   }
   apply();
   if(darkQuery){
@@ -151,7 +175,8 @@
   // Changement d'abonnement (essai, expiration…) : on réapplique.
   document.addEventListener('agenda:premium', function(){ apply(); render(); });
 
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+  function start(){ build(); syncWidgets(); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
   window.AgendaTheme = { apply:apply, themes:THEMES, current:function(){ return effective(); } };
 })();

@@ -86,7 +86,7 @@ public class AgendaMonthWidgetProvider extends BaseAgendaProvider {
                 if (today) {
                     float radius = Math.min(12 * dn, rowH * 0.34f);
                     c.drawCircle(cx, cy, radius, ringP);
-                    numP.setColor(Color.WHITE);
+                    numP.setColor(AgendaWidgetCommon.ACCENT_INK);
                     numP.setTypeface(AgendaWidgetCommon.SANS_BOLD);
                 } else {
                     numP.setColor(inMonth ? AgendaWidgetCommon.INK : AgendaWidgetCommon.DIM);

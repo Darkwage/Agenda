@@ -36,14 +36,79 @@ final class AgendaWidgetCommon {
     static final String PREMIUM_KEY = "agenda_premium";
     static final long RESET_DELAY_MS = 2 * 60 * 1000; // retour auto à aujourd'hui
 
-    // Palette (identique aux aperçus)
-    static final int GREEN = Color.parseColor("#3B5F51");
-    static final int INK = Color.parseColor("#1C1D21");
-    static final int MUTED = Color.parseColor("#8A8A85");
-    static final int BORDER = Color.parseColor("#E3DFD4");
-    static final int DIM = Color.parseColor("#B9B6AC");
-    static final int TODAY_TINT = Color.parseColor("#E6EFEA");
+    // Palette : thème Crème par défaut, remplacée par loadTheme() selon le thème
+    // choisi dans l'appli (clé « agenda_widget_theme », écrite par theme.js).
+    static int GREEN = Color.parseColor("#3B5F51");      // accent
+    static int INK = Color.parseColor("#1C1D21");
+    static int INK_SOFT = Color.parseColor("#5B5F66");
+    static int MUTED = Color.parseColor("#8A8A85");
+    static int BORDER = Color.parseColor("#E3DFD4");
+    static int GRID = Color.parseColor("#EAE5D8");
+    static int DIM = Color.parseColor("#B9B6AC");
+    static int TODAY_TINT = Color.parseColor("#E6EFEA");
+    static int SURFACE = Color.WHITE;
+    static int ACCENT_INK = Color.WHITE;
+    static boolean DARK = false;
+    static String THEME_ID = "creme";
     static final int DONE_GREEN = Color.parseColor("#3D6B4F");
+    static final int INK_ON_LIGHT = Color.parseColor("#1C1D21"); // texte sur une pastille de couleur claire
+    static final String THEME_KEY = "agenda_widget_theme";
+
+    private static int col(org.json.JSONObject o, String k, int def) {
+        try { String v = o.optString(k, ""); return v.startsWith("#") ? Color.parseColor(v) : def; }
+        catch (Exception e) { return def; }
+    }
+
+    /** Recharge la palette du thème choisi dans l'appli. */
+    static void loadTheme(Context ctx) {
+        String raw = ctx.getSharedPreferences(CAPACITOR_PREFS, Context.MODE_PRIVATE).getString(THEME_KEY, null);
+        org.json.JSONObject o;
+        try { o = raw == null ? new org.json.JSONObject() : new org.json.JSONObject(raw); }
+        catch (Exception e) { o = new org.json.JSONObject(); }
+        THEME_ID = o.optString("id", "creme");
+        DARK = "dark".equals(o.optString("mode", "light"));
+        GREEN = col(o, "accent", Color.parseColor("#3B5F51"));
+        INK = col(o, "ink", Color.parseColor("#1C1D21"));
+        INK_SOFT = col(o, "inkSoft", Color.parseColor("#5B5F66"));
+        MUTED = col(o, "inkFaint", Color.parseColor("#8A8A85"));
+        BORDER = col(o, "line", Color.parseColor("#E3DFD4"));
+        GRID = col(o, "lineSoft", Color.parseColor("#EAE5D8"));
+        TODAY_TINT = col(o, "accentSoft", Color.parseColor("#E6EFEA"));
+        SURFACE = col(o, "surface", Color.WHITE);
+        ACCENT_INK = col(o, "accentInk", Color.WHITE);
+        DIM = mix(MUTED, SURFACE, 0.45f);
+    }
+
+    /** Mélange une couleur avec une autre (ratio = part de « with »). */
+    static int mix(int color, int with, float ratio) {
+        return Color.rgb(
+                Math.round(Color.red(color) * (1 - ratio) + Color.red(with) * ratio),
+                Math.round(Color.green(color) * (1 - ratio) + Color.green(with) * ratio),
+                Math.round(Color.blue(color) * (1 - ratio) + Color.blue(with) * ratio));
+    }
+
+    /** Fond doux d'une tâche : la couleur de catégorie fondue dans la surface du thème. */
+    static int soft(int color, float ratio) {
+        return mix(color, SURFACE, DARK ? Math.min(ratio, 0.72f) : ratio);
+    }
+
+    /** Applique le thème à l'en-tête et au fond du widget (la racine doit avoir l'id widget_root). */
+    static void styleChrome(Context ctx, android.widget.RemoteViews v, int titleId, boolean hasNav) {
+        String pkg = ctx.getPackageName();
+        int bg = ctx.getResources().getIdentifier("widget_bg_t_" + THEME_ID, "drawable", pkg);
+        int btn = ctx.getResources().getIdentifier("widget_btn_t_" + THEME_ID, "drawable", pkg);
+        if (bg != 0) v.setInt(R.id.widget_root, "setBackgroundResource", bg);
+        v.setTextColor(R.id.tv_label, GREEN);
+        v.setTextColor(titleId, INK);
+        if (hasNav) {
+            if (btn != 0) {
+                v.setInt(R.id.btn_prev, "setBackgroundResource", btn);
+                v.setInt(R.id.btn_next, "setBackgroundResource", btn);
+            }
+            v.setTextColor(R.id.btn_prev, INK);
+            v.setTextColor(R.id.btn_next, INK);
+        }
+    }
 
     static final Typeface SERIF_BOLD = Typeface.create(Typeface.SERIF, Typeface.BOLD);
     static final Typeface SANS_BOLD = Typeface.create(Typeface.DEFAULT, Typeface.BOLD);

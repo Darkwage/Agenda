@@ -53,7 +53,7 @@ public class AgendaWeekWidgetProvider extends BaseAgendaProvider {
         float chipH = 18 * dn, chipGap = 3 * dn, chipsTop = 44 * dn;
         int capacity = Math.max(0, (int) ((h - chipsTop - 4 * dn) / (chipH + chipGap)));
 
-        Paint fill = AgendaWidgetCommon.paint(Color.WHITE);
+        Paint fill = AgendaWidgetCommon.paint(AgendaWidgetCommon.SURFACE);
         Paint stroke = AgendaWidgetCommon.paint(AgendaWidgetCommon.BORDER);
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeWidth(dn);
@@ -88,7 +88,7 @@ public class AgendaWeekWidgetProvider extends BaseAgendaProvider {
 
             float x0 = i * (colW + gap), x1 = x0 + colW, cx = (x0 + x1) / 2f;
             RectF col = new RectF(x0 + dn * 0.5f, dn * 0.5f, x1 - dn * 0.5f, h - dn * 0.5f);
-            fill.setColor(today ? AgendaWidgetCommon.TODAY_TINT : Color.WHITE);
+            fill.setColor(today ? AgendaWidgetCommon.TODAY_TINT : AgendaWidgetCommon.SURFACE);
             stroke.setColor(today ? AgendaWidgetCommon.GREEN : AgendaWidgetCommon.BORDER);
             c.drawRoundRect(col, 10 * dn, 10 * dn, fill);
             c.drawRoundRect(col, 10 * dn, 10 * dn, stroke);
@@ -110,7 +110,7 @@ public class AgendaWeekWidgetProvider extends BaseAgendaProvider {
                 RectF r = new RectF(x0 + 3 * dn, y, x1 - 3 * dn, y + chipH);
                 chipP.setColor(base);
                 c.drawRoundRect(r, 5 * dn, 5 * dn, chipP);
-                chipTextP.setColor(AgendaWidgetCommon.isLight(base) ? AgendaWidgetCommon.INK : Color.WHITE);
+                chipTextP.setColor(AgendaWidgetCommon.isLight(base) ? AgendaWidgetCommon.INK_ON_LIGHT : Color.WHITE);
                 String title = AgendaWidgetCommon.ellipsize(t.title, chipTextP, r.width() - 6 * dn);
                 c.drawText(title, r.centerX(), AgendaWidgetCommon.centerBaseline(chipTextP, r.centerY()), chipTextP);
                 y += chipH + chipGap;

@@ -35,7 +35,8 @@
   var CHANGELOG = [
     { version:'1.2.0', date:'novembre 2026', items:[
       'Nouvelle rubrique « Apparence » dans les Réglages : thème Nuit, mode automatique et 7 thèmes Premium',
-      'Choix de la police des titres (Premium)'
+      'Choix de la police des titres (Premium)',
+      'Les widgets suivent désormais le thème choisi'
     ]},
     { version:'1.1.0', date:'novembre 2026', items:[
       'Nouvel abonnement Premium (version de démonstration, aucun paiement réel)',

@@ -48,7 +48,7 @@ public class AgendaListWidgetProvider extends BaseAgendaProvider {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
 
-        Paint fill = AgendaWidgetCommon.paint(Color.WHITE);
+        Paint fill = AgendaWidgetCommon.paint(AgendaWidgetCommon.SURFACE);
         Paint stroke = AgendaWidgetCommon.paint(AgendaWidgetCommon.BORDER);
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeWidth(dn);

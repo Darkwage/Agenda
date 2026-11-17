@@ -83,6 +83,7 @@ abstract class BaseAgendaProvider extends AppWidgetProvider {
 
     protected final void updateWidget(Context ctx, AppWidgetManager mgr, int id) {
         RemoteViews views;
+        AgendaWidgetCommon.loadTheme(ctx);
         try {
             if (!AgendaWidgetCommon.isPremium(ctx)) {
                 views = buildLocked(ctx, mgr, id);
@@ -99,6 +100,8 @@ abstract class BaseAgendaProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.tv_title, e.getClass().getSimpleName());
             views.setOnClickPendingIntent(R.id.tv_title, AgendaWidgetCommon.openApp(ctx, id));
         }
+        try { AgendaWidgetCommon.styleChrome(ctx, views, R.id.tv_title, hasNav()); }
+        catch (Exception e) { Log.e("AgendaWidget", "Thème non appliqué", e); }
         mgr.updateAppWidget(id, views);
     }
 

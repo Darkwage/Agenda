@@ -159,7 +159,10 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
     }
 
     private void buildAndPushWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        AgendaWidgetCommon.loadTheme(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.agenda_widget);
+        AgendaWidgetCommon.styleChrome(context, views, R.id.tv_date, true);
+        views.setTextColor(R.id.tv_allday, AgendaWidgetCommon.INK_SOFT);
 
         SharedPreferences state = context.getSharedPreferences(WIDGET_STATE_PREFS, Context.MODE_PRIVATE);
         int offset = state.getInt("offset_" + appWidgetId, 0);
@@ -242,11 +245,11 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         float rowHeight = (float) heightPx / hourCount;
 
         Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        gridPaint.setColor(Color.parseColor("#EAE5D8"));
+        gridPaint.setColor(AgendaWidgetCommon.GRID);
         gridPaint.setStrokeWidth(1f);
 
         Paint hourTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        hourTextPaint.setColor(Color.parseColor("#9B9C96"));
+        hourTextPaint.setColor(AgendaWidgetCommon.MUTED);
         hourTextPaint.setTextSize(8.5f * density);
         hourTextPaint.setTextAlign(Paint.Align.RIGHT);
 
@@ -262,11 +265,11 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
 
         Paint blockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        titlePaint.setColor(Color.parseColor("#21252C"));
+        titlePaint.setColor(AgendaWidgetCommon.INK);
         titlePaint.setTextSize(10 * density);
         titlePaint.setFakeBoldText(true);
         Paint timePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        timePaint.setColor(Color.parseColor("#5B5F66"));
+        timePaint.setColor(AgendaWidgetCommon.INK_SOFT);
         timePaint.setTextSize(8.5f * density);
 
         for (TaskInfo t : timed) {
@@ -383,11 +386,9 @@ public class AgendaWidgetProvider extends AppWidgetProvider {
         return lo <= 0 ? ellipsis : text.substring(0, lo) + ellipsis;
     }
 
+    /** Couleur fondue dans la surface du thème (blanc en thème clair). */
     private int mixWithWhite(int color, float whiteRatio){
-        int r = Math.round(Color.red(color) * (1 - whiteRatio) + 255 * whiteRatio);
-        int g = Math.round(Color.green(color) * (1 - whiteRatio) + 255 * whiteRatio);
-        int b = Math.round(Color.blue(color) * (1 - whiteRatio) + 255 * whiteRatio);
-        return Color.rgb(r, g, b);
+        return AgendaWidgetCommon.soft(color, whiteRatio);
     }
 
     // Each PendingIntent (open-app, prev, next, reset) gets its own clearly
