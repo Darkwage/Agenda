@@ -41,7 +41,8 @@
     { version:'1.2.0', date:'novembre 2026', items:[
       'Nouvelle rubrique « Apparence » dans les Réglages : thème Nuit, mode automatique et 7 thèmes Premium',
       'Choix de la police des titres (Premium)',
-      'Les widgets suivent désormais le thème choisi'
+      'Les widgets suivent désormais le thème choisi',
+      'Nouveaux thèmes Fantaisie : Bonbon (gratuit), Coucher de soleil, Pop, Pixel, Néon et Galaxie'
     ]},
     { version:'1.1.0', date:'novembre 2026', items:[
       'Nouvel abonnement Premium (version de démonstration, aucun paiement réel)',
@@ -56,7 +57,7 @@
     planner:  { icon:'⚡', title:'Priorisation automatique', pitch:'Débloquez la priorisation automatique : vos tâches placées seules dans vos créneaux libres.' },
     revision: { icon:'📚', title:'Programme de révisions',  pitch:'Débloquez le programme de révisions : un planning par matière, calé sur vos examens.' },
     calendar: { icon:'🔄', title:'Synchronisation avec l\u2019agenda du téléphone', pitch:'Débloquez la synchronisation dans les deux sens : vos tâches apparaissent aussi dans l\u2019agenda du téléphone.' },
-    themes:   { icon:'🎨', title:'Thèmes et polices', pitch:'Débloquez tous les thèmes (Lavande, Océan, Ardoise, Minuit doré…) et les polices.' },
+    themes:   { icon:'🎨', title:'Thèmes et polices', pitch:'Débloquez tous les thèmes (Néon, Galaxie, Pixel, Lavande, Ardoise…) et les polices.' },
     widgets:  { icon:'📱', title:'Tous les widgets',         pitch:'Débloquez les widgets Semaine, Mois et Liste sur votre écran d’accueil.' }
   };
 
@@ -219,7 +220,7 @@
       ['📚', 'Programme de révisions', 'Un planning par matière jusqu’à vos examens'],
       ['🧩', 'Grosses tâches découpées en sessions', 'Saisies une fois, réparties automatiquement'],
       ['🔄', 'Synchronisation dans les deux sens', 'Vos tâches aussi dans l\u2019agenda du téléphone'],
-      ['🎨', 'Thèmes et polices', '8 thèmes clairs et sombres pour personnaliser l\u2019appli'],
+      ['🎨', 'Thèmes et polices', '13 thèmes, des classiques aux plus fantaisistes'],
       ['📱', 'Tous les widgets', 'Jour, Semaine, Mois et Liste sur l’écran d’accueil'],
       ['💚', 'Soutenir un développeur indépendant', 'Et les prochaines mises à jour']
     ];

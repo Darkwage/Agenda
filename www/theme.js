@@ -20,7 +20,14 @@
     { id:'rose',       name:'Rose poudré', mode:'light', p:'#F8F1F2', s:'#FFFFFF', a:'#A8466A', i:'#2C2226', k:'#F4E0E8', color:'#A8466A' },
     { id:'minimal',    name:'Minimal',    mode:'light', p:'#F6F6F6', s:'#FFFFFF', a:'#1A1A1A', i:'#1A1A1A', k:'#E6E6E6', color:'#1A1A1A' },
     { id:'ardoise',    name:'Ardoise',    mode:'dark',  p:'#111723', s:'#182030', a:'#7AA2F7', i:'#E6E9EF', k:'#1E2C4A', color:'#111723' },
-    { id:'minuit',     name:'Minuit doré', mode:'dark', p:'#141210', s:'#1C1915', a:'#D4A64A', i:'#EDE6D9', k:'#3A2F1A', color:'#141210' }
+    { id:'minuit',     name:'Minuit doré', mode:'dark', p:'#141210', s:'#1C1915', a:'#D4A64A', i:'#EDE6D9', k:'#3A2F1A', color:'#141210' },
+    // Fantaisie
+    { id:'bonbon',  name:'Bonbon',  group:'fun', mode:'light', free:true, p:'linear-gradient(135deg,#FFD6EA,#D9F5EC 55%,#E4DCFF)', s:'#FFFFFF', a:'#E2559A', i:'#3A2440', k:'#FCE1EF', color:'#E2559A', icon:'🍬' },
+    { id:'soleil',  name:'Coucher de soleil', group:'fun', mode:'light', p:'linear-gradient(170deg,#FFE7C7,#FFD3CF 45%,#F7C6E0)', s:'#FFFBF8', a:'#FF6B4A', i:'#3A1F2B', k:'#FFE1D6', color:'#FF6B4A', icon:'🌅' },
+    { id:'pop',     name:'Pop',     group:'fun', mode:'light', p:'radial-gradient(rgba(30,27,22,.18) 1px, transparent 1.2px) 0 0/8px 8px, #FFF4C2', s:'#FFFFFF', a:'#FF4D6D', i:'#1E1B16', k:'#FFE0E6', color:'#FF4D6D', icon:'💥' },
+    { id:'pixel',   name:'Pixel',   group:'fun', mode:'light', p:'#E9F1E4', s:'#F8FBF5', a:'#3B5BDB', i:'#1B2A1E', k:'#DCE3FB', color:'#3B5BDB', icon:'👾' },
+    { id:'neon',    name:'Néon',    group:'fun', mode:'dark', p:'#0B0B1A', s:'#141428', a:'#FF2BD6', i:'#F2F0FF', k:'#3A1238', color:'#0B0B1A', icon:'⚡' },
+    { id:'galaxie', name:'Galaxie', group:'fun', mode:'dark', p:'radial-gradient(circle at 75% 20%, rgba(155,140,255,.6), transparent 60%), #120E2B', s:'#1B1638', a:'#9B8CFF', i:'#EEEAFF', k:'#2D2660', color:'#120E2B', icon:'🪐' }
   ];
   var FONTS = [
     { id:'serif', name:'Élégante', sample:'Aa', css:"'Fraunces', Georgia, serif", free:true },
@@ -114,6 +121,14 @@
       '<span class="tp-dot" style="background:' + t.a + '"></span></div></div>';
   }
 
+  function tiles(list, cur){
+    return '<div class="theme-grid">' + list.map(function(t){
+      return '<button type="button" class="theme-tile' + (t.id === cur ? ' is-current' : '') + '" data-theme-id="' + t.id + '" aria-label="Thème ' + esc(t.name) + '">' +
+        preview(t) + (t.free ? '' : '<span class="theme-lock">🔒</span>') +
+        '<span class="theme-name">' + (t.icon ? t.icon + ' ' : '') + esc(t.name) + '</span></button>';
+    }).join('') + '</div>';
+  }
+
   function render(){
     var card = document.getElementById('theme-card'); if(!card) return;
     var isPrem = premium();
@@ -121,24 +136,22 @@
     var curFont = prefs.font;
     // Si le choix enregistré est verrouillé, on montre ce qui est réellement affiché.
     var e = effective();
+    var THEME_FONTS = { bonbon:"'Fredoka', sans-serif", galaxie:"'Fredoka', sans-serif", soleil:"'Righteous', sans-serif", pop:"'Righteous', sans-serif", neon:"'Righteous', sans-serif", pixel:"'Press Start 2P', monospace" };
+    var themeFont = THEME_FONTS[e.theme.id] || '';
     if(!(byId(THEMES, cur) || {}).free && !isPrem) cur = e.theme.id === 'nuit' && prefs.theme === 'auto' ? 'auto' : 'creme';
     if(!(byId(FONTS, curFont) || {}).free && !isPrem) curFont = 'serif';
 
     card.innerHTML =
       '<details class="collapsible" id="theme-details"' + (card.getAttribute('data-open') ? ' open' : '') + '>' +
       '<summary>Apparence <span class="chev">▸</span></summary>' +
-      '<div class="theme-sub">Thème</div>' +
-      '<div class="theme-grid">' + THEMES.map(function(t){
-        return '<button type="button" class="theme-tile' + (t.id === cur ? ' is-current' : '') + '" data-theme-id="' + t.id + '" aria-label="Thème ' + esc(t.name) + '">' +
-          preview(t) + (t.free ? '' : '<span class="theme-lock">🔒</span>') +
-          '<span class="theme-name">' + esc(t.name) + '</span></button>';
-      }).join('') + '</div>' +
+      '<div class="theme-sub">Classiques</div>' + tiles(THEMES.filter(function(t){ return t.group !== 'fun'; }), cur) +
+      '<div class="theme-sub">Fantaisie</div>' + tiles(THEMES.filter(function(t){ return t.group === 'fun'; }), cur) +
       '<p class="field-hint" style="margin:8px 0 0;">« Automatique » suit le mode clair ou sombre du téléphone.</p>' +
       '<div class="theme-sub">Police des titres</div>' +
       '<div class="font-choices">' + FONTS.map(function(f){
         return '<button type="button" class="font-choice' + (f.id === curFont ? ' is-current' : '') + '" data-font-id="' + f.id + '">' +
           (f.free ? '' : '<span class="theme-lock">🔒</span>') +
-          '<b style="font-family:' + f.css + '">' + f.sample + '</b><span>' + esc(f.name) + '</span></button>';
+          '<b style="font-family:' + (f.id === 'serif' && themeFont ? themeFont : f.css) + '">' + f.sample + '</b><span>' + esc(f.id === 'serif' && themeFont ? 'Du thème' : f.name) + '</span></button>';
       }).join('') + '</div>' +
       '</details>';
   }

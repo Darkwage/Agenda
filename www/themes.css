@@ -58,6 +58,115 @@
   --danger:#E57A6E;
 }
 
+
+/* ==========================================================================
+   Thèmes « Fantaisie » (lycéens, étudiants…)
+   La police propre au thème s'efface si l'utilisateur choisit une police
+   (règles data-font placées plus bas, donc prioritaires).
+   ========================================================================== */
+:root[data-theme="bonbon"]{
+  --paper:#FFF0F6; --paper-deep:#FBE0EE; --surface:#FFFFFF;
+  --ink:#3A2440; --ink-soft:#7A5A80; --ink-faint:#B79BBB;
+  --line:#F3CDE2; --line-soft:#F9E3EF;
+  --accent:#E2559A; --accent-dark:#C63F81; --accent-ink:#FFFFFF; --accent-soft:#FCE1EF;
+  --radius-s:10px; --radius-m:16px; --radius-l:24px;
+  --font-display:'Fredoka', 'Inter', sans-serif;
+}
+:root[data-theme="bonbon"] body{
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255,186,222,.55) 0 120px, transparent 240px),
+    radial-gradient(circle at 92% 30%, rgba(178,232,214,.55) 0 110px, transparent 230px),
+    radial-gradient(circle at 20% 85%, rgba(205,190,255,.5) 0 130px, transparent 260px),
+    #FFF0F6 fixed;
+}
+
+:root[data-theme="soleil"]{
+  --paper:#FFEADB; --paper-deep:#FFDCCB; --surface:#FFFBF8;
+  --ink:#3A1F2B; --ink-soft:#7B4A55; --ink-faint:#B88C93;
+  --line:#F6C9B7; --line-soft:#FBE0D3;
+  --accent:#FF6B4A; --accent-dark:#E5502F; --accent-ink:#FFFFFF; --accent-soft:#FFE1D6;
+  --radius-m:14px; --radius-l:22px;
+  --font-display:'Righteous', 'Inter', sans-serif;
+}
+:root[data-theme="soleil"] body{ background:linear-gradient(170deg, #FFE7C7 0%, #FFD3CF 45%, #F7C6E0 100%) fixed; }
+
+:root[data-theme="pop"]{
+  --paper:#FFF4C2; --paper-deep:#FFEA94; --surface:#FFFFFF;
+  --ink:#1E1B16; --ink-soft:#4A4436; --ink-faint:#8C8468;
+  --line:#1E1B16; --line-soft:#F0DE8A;
+  --accent:#FF4D6D; --accent-dark:#E0304F; --accent-ink:#FFFFFF; --accent-soft:#FFE0E6;
+  --radius-s:8px; --radius-m:12px; --radius-l:16px;
+  --shadow-card:4px 4px 0 #1E1B16;
+  --font-display:'Righteous', 'Inter', sans-serif;
+}
+:root[data-theme="pop"] body{
+  background:radial-gradient(rgba(30,27,22,.12) 1.2px, transparent 1.3px) 0 0 / 16px 16px, #FFF4C2;
+}
+:root[data-theme="pop"] .card{ border-width:2px; }
+
+:root[data-theme="pixel"]{
+  --paper:#E9F1E4; --paper-deep:#D6E4CF; --surface:#F8FBF5;
+  --ink:#1B2A1E; --ink-soft:#40573F; --ink-faint:#7E937A;
+  --line:#1B2A1E; --line-soft:#C7D8BF;
+  --accent:#3B5BDB; --accent-dark:#2B47B8; --accent-ink:#FFFFFF; --accent-soft:#DCE3FB;
+  --radius-s:0px; --radius-m:0px; --radius-l:0px;
+  --shadow-card:4px 4px 0 #1B2A1E;
+  --shadow-modal:6px 6px 0 #1B2A1E;
+  --font-display:'Press Start 2P', 'IBM Plex Mono', monospace;
+}
+:root[data-theme="pixel"] body{
+  background:
+    linear-gradient(rgba(27,42,30,.06) 1px, transparent 1px) 0 0 / 12px 12px,
+    linear-gradient(90deg, rgba(27,42,30,.06) 1px, transparent 1px) 0 0 / 12px 12px, #E9F1E4;
+}
+:root[data-theme="pixel"] .card{ border-width:2px; }
+:root[data-theme="pixel"] h1, :root[data-theme="pixel"] h2, :root[data-theme="pixel"] .brand-mark{ letter-spacing:0; line-height:1.4; }
+:root[data-theme="pixel"] .brand-mark{ font-size:26px; }
+:root[data-theme="pixel"] .section-title, :root[data-theme="pixel"] .modal-head h2{ font-size:13px; }
+
+:root[data-theme="neon"]{
+  --paper:#0B0B1A; --paper-deep:#14142B; --surface:#141428;
+  --ink:#F2F0FF; --ink-soft:#B4B0D9; --ink-faint:#6E6A99;
+  --line:#2C2A55; --line-soft:#1E1D3D;
+  --accent:#FF2BD6; --accent-dark:#FF6BE3; --accent-ink:#1A0016; --accent-soft:#3A1238;
+  --danger:#FF5C7A;
+  --font-display:'Righteous', 'Inter', sans-serif;
+}
+:root[data-theme="neon"] body{
+  background:
+    linear-gradient(rgba(0,229,255,.06) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(0,229,255,.06) 1px, transparent 1px) 0 0 / 28px 28px, #0B0B1A;
+}
+:root[data-theme="neon"] .brand-mark{ text-shadow:0 0 12px rgba(255,43,214,.55); }
+:root[data-theme="neon"] .btn-primary,
+:root[data-theme="neon"] .view-tabs button.active,
+:root[data-theme="neon"] .fab{ box-shadow:0 0 18px rgba(255,43,214,.55); }
+:root[data-theme="neon"] .card{ box-shadow:0 0 0 1px rgba(0,229,255,.18), 0 10px 30px -18px rgba(0,229,255,.45); }
+
+:root[data-theme="galaxie"]{
+  --paper:#120E2B; --paper-deep:#1C1740; --surface:#1B1638;
+  --ink:#EEEAFF; --ink-soft:#ABA3D8; --ink-faint:#6F679E;
+  --line:#2F2860; --line-soft:#231D4A;
+  --accent:#9B8CFF; --accent-dark:#B8ADFF; --accent-ink:#120E2B; --accent-soft:#2D2660;
+  --danger:#FF7A90;
+  --radius-m:14px; --radius-l:22px;
+  --font-display:'Fredoka', 'Inter', sans-serif;
+}
+:root[data-theme="galaxie"] body{
+  background:
+    radial-gradient(1.5px 1.5px at 20% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 15%, #fff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 85% 60%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 40% 80%, #fff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 10% 65%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 45%, #fff 50%, transparent 51%),
+    radial-gradient(ellipse at 80% 10%, rgba(155,140,255,.35), transparent 55%),
+    radial-gradient(ellipse at 10% 90%, rgba(255,107,203,.25), transparent 55%),
+    #120E2B;
+  background-size:220px 220px, 260px 260px, 300px 300px, 240px 240px, 280px 280px, 200px 200px, 100% 100%, 100% 100%, auto;
+  background-attachment:fixed;
+}
+
 /* Ajustements communs aux thèmes sombres */
 :root[data-mode="dark"]{
   color-scheme:dark;
