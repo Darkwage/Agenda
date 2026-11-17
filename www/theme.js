@@ -25,9 +25,9 @@
     { id:'bonbon',  name:'Bonbon',  group:'fun', mode:'light', free:true, p:'linear-gradient(135deg,#FFD6EA,#D9F5EC 55%,#E4DCFF)', s:'#FFFFFF', a:'#E2559A', i:'#3A2440', k:'#FCE1EF', color:'#E2559A', icon:'🍬' },
     { id:'soleil',  name:'Coucher de soleil', group:'fun', mode:'light', p:'linear-gradient(170deg,#FFE7C7,#FFD3CF 45%,#F7C6E0)', s:'#FFFBF8', a:'#FF6B4A', i:'#3A1F2B', k:'#FFE1D6', color:'#FF6B4A', icon:'🌅' },
     { id:'pop',     name:'Pop',     group:'fun', mode:'light', p:'radial-gradient(rgba(30,27,22,.18) 1px, transparent 1.2px) 0 0/8px 8px, #FFF4C2', s:'#FFFFFF', a:'#FF4D6D', i:'#1E1B16', k:'#FFE0E6', color:'#FF4D6D', icon:'💥' },
-    { id:'pixel',   name:'Pixel',   group:'fun', mode:'light', p:'#E9F1E4', s:'#F8FBF5', a:'#3B5BDB', i:'#1B2A1E', k:'#DCE3FB', color:'#3B5BDB', icon:'👾' },
+    { id:'pixel',   name:'Pixel',   group:'fun', free:true, mode:'light', p:'#E9F1E4', s:'#F8FBF5', a:'#3B5BDB', i:'#1B2A1E', k:'#DCE3FB', color:'#3B5BDB', icon:'👾' },
     { id:'neon',    name:'Néon',    group:'fun', mode:'dark', p:'#0B0B1A', s:'#141428', a:'#FF2BD6', i:'#F2F0FF', k:'#3A1238', color:'#0B0B1A', icon:'⚡' },
-    { id:'galaxie', name:'Galaxie', group:'fun', mode:'dark', p:'radial-gradient(circle at 75% 20%, rgba(155,140,255,.6), transparent 60%), #120E2B', s:'#1B1638', a:'#9B8CFF', i:'#EEEAFF', k:'#2D2660', color:'#120E2B', icon:'🪐' }
+    { id:'galaxie', name:'Galaxie', group:'fun', free:true, mode:'dark', p:'radial-gradient(circle at 75% 20%, rgba(155,140,255,.6), transparent 60%), #120E2B', s:'#1B1638', a:'#9B8CFF', i:'#EEEAFF', k:'#2D2660', color:'#120E2B', icon:'🪐' }
   ];
   var FONTS = [
     { id:'serif', name:'Élégante', sample:'Aa', css:"'Fraunces', Georgia, serif", free:true },
