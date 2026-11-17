@@ -1,0 +1,120 @@
+/* ==========================================================================
+   Agenda — thèmes (appliqués par theme.js via <html data-theme / data-mode>)
+   « creme » = thème d'origine défini dans index.html (:root), rien à surcharger.
+   ========================================================================== */
+
+/* ---------- thèmes clairs ---------- */
+:root[data-theme="lavande"]{
+  --paper:#F4F2F8; --paper-deep:#E9E5F1; --surface:#FFFFFF;
+  --ink:#25222E; --ink-soft:#5E5A6B; --ink-faint:#9E9AA8;
+  --line:#DCD6E6; --line-soft:#EAE6F1;
+  --accent:#6A4C9C; --accent-dark:#553C80; --accent-ink:#F6F2FC; --accent-soft:#ECE5F6;
+}
+:root[data-theme="ocean"]{
+  --paper:#F1F5F7; --paper-deep:#E2EBEF; --surface:#FFFFFF;
+  --ink:#1F2A30; --ink-soft:#52626B; --ink-faint:#93A1A8;
+  --line:#D3DFE5; --line-soft:#E5EDF1;
+  --accent:#1F6F8B; --accent-dark:#175A71; --accent-ink:#EFF8FB; --accent-soft:#DDEEF4;
+}
+:root[data-theme="terracotta"]{
+  --paper:#F7F1EC; --paper-deep:#EEE2D8; --surface:#FFFDFB;
+  --ink:#2B2320; --ink-soft:#66574F; --ink-faint:#A3958C;
+  --line:#E2D3C6; --line-soft:#EEE4DA;
+  --accent:#B5532F; --accent-dark:#964224; --accent-ink:#FDF3EE; --accent-soft:#F5E2D8;
+}
+:root[data-theme="rose"]{
+  --paper:#F8F1F2; --paper-deep:#EFE1E4; --surface:#FFFFFF;
+  --ink:#2C2226; --ink-soft:#6A5960; --ink-faint:#A6969C;
+  --line:#E5D3D7; --line-soft:#F0E4E7;
+  --accent:#A8466A; --accent-dark:#8A3756; --accent-ink:#FDF2F6; --accent-soft:#F4E0E8;
+}
+:root[data-theme="minimal"]{
+  --paper:#F6F6F6; --paper-deep:#EAEAEA; --surface:#FFFFFF;
+  --ink:#1A1A1A; --ink-soft:#5A5A5A; --ink-faint:#9A9A9A;
+  --line:#DADADA; --line-soft:#E8E8E8;
+  --accent:#1A1A1A; --accent-dark:#000000; --accent-ink:#FFFFFF; --accent-soft:#E6E6E6;
+}
+
+/* ---------- thèmes sombres ---------- */
+:root[data-theme="nuit"]{
+  --paper:#121518; --paper-deep:#1B1F23; --surface:#1A1E22;
+  --ink:#E8E6E1; --ink-soft:#A9ADB2; --ink-faint:#6E7378;
+  --line:#2C3237; --line-soft:#23282C;
+  --accent:#6FB39C; --accent-dark:#8CC9B4; --accent-ink:#0F1A16; --accent-soft:#1F3A32;
+  --danger:#E06C6C;
+}
+:root[data-theme="ardoise"]{
+  --paper:#111723; --paper-deep:#1A2130; --surface:#182030;
+  --ink:#E6E9EF; --ink-soft:#A3ABBA; --ink-faint:#677085;
+  --line:#2A3346; --line-soft:#212A3B;
+  --accent:#7AA2F7; --accent-dark:#9DBBFA; --accent-ink:#0D1424; --accent-soft:#1E2C4A;
+  --danger:#F07878;
+}
+:root[data-theme="minuit"]{
+  --paper:#141210; --paper-deep:#1E1B17; --surface:#1C1915;
+  --ink:#EDE6D9; --ink-soft:#B3A894; --ink-faint:#776E5F;
+  --line:#332D25; --line-soft:#26221C;
+  --accent:#D4A64A; --accent-dark:#E2BC6C; --accent-ink:#1A140A; --accent-soft:#3A2F1A;
+  --danger:#E57A6E;
+}
+
+/* Ajustements communs aux thèmes sombres */
+:root[data-mode="dark"]{
+  color-scheme:dark;
+  --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -16px rgba(0,0,0,.7);
+  --shadow-modal:0 20px 60px -20px rgba(0,0,0,.8);
+}
+/* Fonds des tâches : teinte de la catégorie mêlée à la surface sombre (au lieu du pastel clair). */
+:root[data-mode="dark"] *{
+  --cat-soft:color-mix(in srgb, var(--cat, var(--accent)) 26%, var(--surface)) !important;
+}
+:root[data-mode="dark"] .travel-block{ background-color:var(--surface) !important; }
+:root[data-mode="dark"] .btn-delete:hover,
+:root[data-mode="dark"] .sheet-btn.danger:hover{ background:rgba(224,108,108,.12) !important; }
+:root[data-mode="dark"] .pl-note.warn{ background:rgba(224,108,108,.1) !important; }
+:root[data-mode="dark"] .pl-drag-tip{ color:var(--paper) !important; }
+:root[data-mode="dark"] .pw-demo{ background:#2A2416; border-color:#6B5A2E; color:#E2C88A; }
+:root[data-mode="dark"] .sub-card .sub-pill.warn,
+:root[data-mode="dark"] .admin-chip.warn{ background:#2A2416; color:#E2C88A; }
+:root[data-mode="dark"] input,
+:root[data-mode="dark"] select,
+:root[data-mode="dark"] textarea{ background-color:var(--surface); color:var(--ink); }
+
+/* ---------- police des titres ---------- */
+:root[data-font="sans"]{ --font-display:var(--font-body); }
+:root[data-font="mono"]{ --font-display:var(--font-mono); }
+
+/* ==========================================================================
+   Carte « Apparence » (Réglages)
+   ========================================================================== */
+.theme-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.theme-tile{
+  position:relative; padding:0; border:1.5px solid var(--line); border-radius:var(--radius-m);
+  background:none; cursor:pointer; overflow:hidden; text-align:left; font-family:var(--font-body);
+}
+.theme-tile.is-current{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.theme-prev{ height:54px; padding:8px; display:flex; flex-direction:column; gap:5px; }
+.theme-prev .tp-bar{ height:7px; width:60%; border-radius:4px; }
+.theme-prev .tp-row{ display:flex; gap:4px; }
+.theme-prev .tp-chip{ height:12px; flex:1; border-radius:3px; }
+.theme-prev .tp-dot{ width:12px; height:12px; border-radius:50%; flex:none; }
+.theme-prev.is-split{ background:linear-gradient(135deg, #F5F3EE 50%, #121518 50%) !important; }
+.theme-name{
+  display:block; padding:5px 7px 6px; font-size:11.5px; font-weight:600;
+  color:var(--ink); background:var(--surface); border-top:1px solid var(--line-soft);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.theme-lock{
+  position:absolute; top:5px; right:5px; font-size:10px; line-height:1;
+  background:rgba(0,0,0,.45); color:#fff; border-radius:999px; padding:3px 6px;
+}
+body.is-premium .theme-lock{ display:none; }
+.theme-sub{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin:14px 0 8px; }
+.font-choices{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.font-choice{
+  position:relative; border:1.5px solid var(--line); border-radius:var(--radius-m); background:var(--surface);
+  padding:10px 6px; text-align:center; cursor:pointer; color:var(--ink);
+}
+.font-choice.is-current{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.font-choice b{ display:block; font-size:18px; font-weight:600; line-height:1.1; }
+.font-choice span{ font-size:11px; color:var(--ink-soft); }

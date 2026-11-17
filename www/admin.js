@@ -52,7 +52,7 @@
     ['Réglages', [
       ['set:categories', 'Catégories'], ['set:groups', 'Groupes'], ['set:birthdays', 'Anniversaires'],
       ['set:backup', 'Sauvegarde'], ['set:export', 'Export'], ['set:import', 'Import'],
-      ['set:notif-test', 'Test du bip']
+      ['set:notif-test', 'Test du bip'], ['set:theme', 'Changement de thème'], ['set:font', 'Changement de police']
     ]],
     ['Abonnement', [
       ['pw:open', 'Page d’abonnement affichée'], ['pw:trial', 'Essai démarré'], ['pw:purchase', 'Abonnement souscrit'],

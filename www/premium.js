@@ -20,7 +20,7 @@
      ---------------------------------------------------------------------- */
   var CONFIG = {
     demo: true,                          // true = achats simulés
-    appVersion: '1.1.0',                 // à aligner sur versionName (android/app/build.gradle)
+    appVersion: '1.2.0',                 // à aligner sur versionName (android/app/build.gradle)
     supportEmail: '',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
     trialDays: 14,
     termsUrl: '',                        // CGU (à rédiger avant la commercialisation)
@@ -33,6 +33,10 @@
 
   /* Nouveautés affichées après une mise à jour (la plus récente en premier). */
   var CHANGELOG = [
+    { version:'1.2.0', date:'novembre 2026', items:[
+      'Nouvelle rubrique « Apparence » dans les Réglages : thème Nuit, mode automatique et 7 thèmes Premium',
+      'Choix de la police des titres (Premium)'
+    ]},
     { version:'1.1.0', date:'novembre 2026', items:[
       'Nouvel abonnement Premium (version de démonstration, aucun paiement réel)',
       'Carte « Mon abonnement » dans les Réglages',
@@ -45,6 +49,7 @@
   var FEATURES = {
     planner:  { icon:'⚡', title:'Priorisation automatique', pitch:'Débloquez la priorisation automatique : vos tâches placées seules dans vos créneaux libres.' },
     revision: { icon:'📚', title:'Programme de révisions',  pitch:'Débloquez le programme de révisions : un planning par matière, calé sur vos examens.' },
+    themes:   { icon:'🎨', title:'Thèmes et polices', pitch:'Débloquez tous les thèmes (Lavande, Océan, Ardoise, Minuit doré…) et les polices.' },
     widgets:  { icon:'📱', title:'Tous les widgets',         pitch:'Débloquez les widgets Semaine, Mois et Liste sur votre écran d’accueil.' }
   };
 
@@ -206,6 +211,7 @@
       ['⚡', 'Priorisation automatique', 'Vos tâches placées seules, les plus urgentes d’abord'],
       ['📚', 'Programme de révisions', 'Un planning par matière jusqu’à vos examens'],
       ['🧩', 'Grosses tâches découpées en sessions', 'Saisies une fois, réparties automatiquement'],
+      ['🎨', 'Thèmes et polices', '8 thèmes clairs et sombres pour personnaliser l\u2019appli'],
       ['📱', 'Tous les widgets', 'Jour, Semaine, Mois et Liste sur l’écran d’accueil'],
       ['💚', 'Soutenir un développeur indépendant', 'Et les prochaines mises à jour']
     ];
@@ -525,6 +531,7 @@
   function applyUi(){
     document.body.classList.toggle('is-premium', isPremium());
     renderSubCard();
+    try{ document.dispatchEvent(new CustomEvent('agenda:premium')); }catch(e){}
   }
 
   /* Un widget verrouillé a été touché : MainActivity a posé la clé
