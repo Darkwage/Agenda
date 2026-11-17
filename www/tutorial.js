@@ -18,7 +18,7 @@
      STYLES
      ---------------------------------------------------------------------- */
   var CSS = [
-    '#tuto-overlay .modal-card{ max-width:420px; padding-bottom:18px; overflow:hidden; }',
+    '#tuto-overlay .modal-card{ max-width:420px; overflow:hidden; padding-bottom:calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }',
     '.tuto-stage{ position:relative; height:230px; margin:-4px -4px 16px; border-radius:var(--radius-l,18px); background:var(--paper); border:1px solid var(--line-soft); overflow:hidden; }',
     '.tuto-slides{ display:flex; transition:transform .35s cubic-bezier(.2,.7,.2,1); }',
     '.tuto-slide{ flex:0 0 100%; min-width:100%; position:relative; height:230px; }',
