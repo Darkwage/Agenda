@@ -171,3 +171,16 @@ nav.view-tabs .admin-tab.active{ border-style:solid !important; }
 .admin-input{ width:100%; margin:8px 0 0; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-s); font-size:13px; background:var(--surface); color:var(--ink); }
 #admin-remote-cfg .btn-ghost{ margin-top:8px; }
 #admin-remote .admin-kpis{ margin-bottom:4px; }
+
+/* ---------- agendas du téléphone (calendar-sync.js) ---------- */
+.calsync-body{ margin-top:10px; }
+.calsync-toggle{ display:flex; gap:10px; align-items:flex-start; margin-top:10px; font-size:13px; cursor:pointer; }
+.calsync-toggle input{ accent-color:var(--accent); width:17px; height:17px; flex:none; margin-top:1px; }
+.calsync-toggle small{ display:block; color:var(--ink-faint); font-size:11.5px; margin-top:2px; }
+.calsync-list{ margin:8px 0 4px 27px; display:flex; flex-direction:column; gap:6px; }
+.calsync-cal{ display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer; }
+.calsync-cal input{ accent-color:var(--accent); flex:none; }
+.calsync-name small{ display:block; color:var(--ink-faint); font-size:10.5px; }
+.ext-dot{ display:inline-block; width:10px; height:10px; border-radius:50%; flex:none; margin-right:6px; vertical-align:middle; }
+.calsync-warn{ font-size:12px; color:var(--danger); margin:8px 0 0; }
+.ext-ev-line{ margin:0 0 8px; font-size:13.5px; display:flex; align-items:center; }

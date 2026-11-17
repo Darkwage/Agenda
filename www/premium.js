@@ -20,7 +20,7 @@
      ---------------------------------------------------------------------- */
   var CONFIG = {
     demo: true,                          // true = achats simulés
-    appVersion: '1.2.0',                 // à aligner sur versionName (android/app/build.gradle)
+    appVersion: '1.3.0',                 // à aligner sur versionName (android/app/build.gradle)
     supportEmail: '',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
     trialDays: 14,
     termsUrl: '',                        // CGU (à rédiger avant la commercialisation)
@@ -33,6 +33,11 @@
 
   /* Nouveautés affichées après une mise à jour (la plus récente en premier). */
   var CHANGELOG = [
+    { version:'1.3.0', date:'novembre 2026', items:[
+      'Agendas du téléphone : vos rendez-vous Google, Samsung ou Outlook s\u2019affichent dans Agenda (Réglages › Agendas du téléphone)',
+      'Les générateurs évitent automatiquement ces rendez-vous',
+      'Premium : vos tâches sont aussi envoyées dans l\u2019agenda du téléphone, et les modifications faites là-bas reviennent ici'
+    ]},
     { version:'1.2.0', date:'novembre 2026', items:[
       'Nouvelle rubrique « Apparence » dans les Réglages : thème Nuit, mode automatique et 7 thèmes Premium',
       'Choix de la police des titres (Premium)',
@@ -50,6 +55,7 @@
   var FEATURES = {
     planner:  { icon:'⚡', title:'Priorisation automatique', pitch:'Débloquez la priorisation automatique : vos tâches placées seules dans vos créneaux libres.' },
     revision: { icon:'📚', title:'Programme de révisions',  pitch:'Débloquez le programme de révisions : un planning par matière, calé sur vos examens.' },
+    calendar: { icon:'🔄', title:'Synchronisation avec l\u2019agenda du téléphone', pitch:'Débloquez la synchronisation dans les deux sens : vos tâches apparaissent aussi dans l\u2019agenda du téléphone.' },
     themes:   { icon:'🎨', title:'Thèmes et polices', pitch:'Débloquez tous les thèmes (Lavande, Océan, Ardoise, Minuit doré…) et les polices.' },
     widgets:  { icon:'📱', title:'Tous les widgets',         pitch:'Débloquez les widgets Semaine, Mois et Liste sur votre écran d’accueil.' }
   };
@@ -212,6 +218,7 @@
       ['⚡', 'Priorisation automatique', 'Vos tâches placées seules, les plus urgentes d’abord'],
       ['📚', 'Programme de révisions', 'Un planning par matière jusqu’à vos examens'],
       ['🧩', 'Grosses tâches découpées en sessions', 'Saisies une fois, réparties automatiquement'],
+      ['🔄', 'Synchronisation dans les deux sens', 'Vos tâches aussi dans l\u2019agenda du téléphone'],
       ['🎨', 'Thèmes et polices', '8 thèmes clairs et sombres pour personnaliser l\u2019appli'],
       ['📱', 'Tous les widgets', 'Jour, Semaine, Mois et Liste sur l’écran d’accueil'],
       ['💚', 'Soutenir un développeur indépendant', 'Et les prochaines mises à jour']
@@ -437,7 +444,8 @@
     ['Comment résilier mon abonnement ?', 'Ouvrez Google Play › votre profil › Paiements et abonnements › Abonnements › Agenda. Vous gardez Premium jusqu’à la fin de la période payée.'],
     ['Que deviennent mes données si j’arrête Premium ?', 'Rien n’est supprimé : vos tâches, vos programmes et vos lots déjà planifiés restent affichés. Seule la création de nouveaux plannings automatiques est réservée à Premium.'],
     ['J’ai changé de téléphone, comment retrouver Premium ?', 'Connectez-vous avec le même compte Google, puis Réglages › Mon abonnement › Restaurer mes achats. Pour vos tâches, utilisez Sauvegarde › Exporter puis Importer.'],
-    ['Mes données sont-elles envoyées quelque part ?', 'Vos tâches, rendez-vous et anniversaires restent sur votre téléphone : ils ne sont jamais envoyés. Si vous l\u2019acceptez, seules des statistiques anonymes d\u2019utilisation (quelles fonctionnalités servent) sont partagées via Google Analytics pour Firebase. Vous pouvez changer d\u2019avis dans Réglages › Aide & contact.'],
+    ['Mes données sont-elles envoyées quelque part ?', 'Vos tâches, rendez-vous et anniversaires restent sur votre téléphone : ils ne sont jamais envoyés par l\u2019appli. La lecture de vos autres agendas et l\u2019envoi vers l\u2019agenda « Agenda (appli) » se font aussi sur le téléphone. Si vous l\u2019acceptez, seules des statistiques anonymes d\u2019utilisation (quelles fonctionnalités servent) sont partagées via Google Analytics pour Firebase.'],
+    ['Mes rendez-vous Google n\u2019apparaissent pas', 'Réglages › Agendas du téléphone : activez « Afficher les rendez-vous… » et cochez les agendas voulus. Vérifiez aussi que l\u2019agenda est bien synchronisé sur le téléphone (appli Google Agenda).'],
     ['Le widget ne se met pas à jour', 'Ouvrez l’appli une fois : le widget se resynchronise. Si le problème persiste, retirez-le et ajoutez-le à nouveau.']
   ];
 

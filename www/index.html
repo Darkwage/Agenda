@@ -725,6 +725,7 @@
   .pl-lunch-times{ display:flex; gap:8px; margin-top:8px; }
 
   /* Déplacement à la main des tâches planifiées */
+  .task-block.is-external, .month-chip.is-external{ background-image:repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.035) 6px 7px); }
   .task-block.is-planner, .task-block.is-draggable{ cursor:grab; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   .task-block.is-drag-origin{ opacity:.3; }
   .task-block.pl-ghost{ cursor:grabbing; box-shadow:0 8px 22px rgba(0,0,0,.28); opacity:.95; margin:0; }
@@ -1731,6 +1732,7 @@ window.addEventListener('error', function(ev){
     return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || uid();
   }
   function getCategory(key){
+    if(key && String(key).indexOf('ext:') === 0 && window.AgendaHooks && window.AgendaHooks.category) return window.AgendaHooks.category(key);
     if(key === PLANNER_KEY) return { key:PLANNER_KEY, label:'Planificateur', color: plannerCfg.color };
     if(revCats[key]) return { key:key, label:revCats[key].label, color:revCats[key].color };
     for(var i=0;i<CATEGORIES.length;i++){ if(CATEGORIES[i].key === key) return CATEGORIES[i]; }
@@ -2814,7 +2816,12 @@ window.addEventListener('error', function(ev){
     } else { calendarLabel.textContent = fmtMonthYear(currentDate); }
   }
 
-  function tasksForDate(dateStr){ return getFilteredTasks().filter(function(t){ return t.time ? (t.date === dateStr) : taskCoversDate(t, dateStr); }); }
+  function tasksForDate(dateStr){
+    var own = getFilteredTasks().filter(function(t){ return t.time ? (t.date === dateStr) : taskCoversDate(t, dateStr); });
+    // Rendez-vous des autres agendas du téléphone (calendar-sync.js), en lecture seule.
+    try{ if(window.AgendaHooks && window.AgendaHooks.eventsForDate) own = own.concat(window.AgendaHooks.eventsForDate(dateStr) || []); }catch(e){}
+    return own;
+  }
   function deadlineMarkersForDate(dateStr){
     return getFilteredTasks().filter(function(t){ return t.deadline === dateStr && t.deadline !== t.date && !t.time && !t.recurrenceId; });
   }
@@ -2914,7 +2921,7 @@ window.addEventListener('error', function(ev){
         };
         if(t.travelBefore) inner += travelHtml(t._rs - t.travelBefore, t._rs, t.travelBefore + ' min');
         if(t.travelAfter) inner += travelHtml(t._rs + t.duration, t._rs + t.duration + t.travelAfter, t.travelAfter + ' min');
-        inner += '<div class="task-block' + (t.done?' done':'') + ((t.source === 'planner' && !t.done) ? ' is-planner' : '') + (!t.done ? ' is-draggable' : '') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
+        inner += '<div class="task-block' + (t.done?' done':'') + ((t.source === 'planner' && !t.done) ? ' is-planner' : '') + ((!t.done && !t.external) ? ' is-draggable' : '') + (t.external ? ' is-external' : '') + '" data-open="' + t.id + '" style="top:' + top + 'px;height:' + height + 'px;left:calc(' + leftPct + '% + 2px);width:calc(' + widthPct + '% - 6px);--cat:' + cat.color + ';--cat-soft:' + softColor(cat.color) + '">' +
           '<div class="tb-title">' + doneMark + (t.locked ? '\uD83D\uDCCC ' : '') + flag + escapeHtml(t.title) + '</div>' +
           '<div class="tb-time">' + t.time + ' · ' + formatDuration(t.duration) + '</div>' +
           progressBar +
@@ -3034,9 +3041,11 @@ window.addEventListener('error', function(ev){
     var pendingClick = null;
     if(selectedIds[el.dataset.open]) el.classList.add('is-selected');
     // Les blocs déplaçables gèrent eux-mêmes l'appui long (immobile = sélection, glisser = déplacement)
-    if(!el.classList.contains('is-draggable')) wireSelectable(el, el.dataset.open);
+    var isExt = String(el.dataset.open).indexOf('ext:') === 0;
+    if(!el.classList.contains('is-draggable') && !isExt) wireSelectable(el, el.dataset.open);
     el.addEventListener('click', function(ev){
       ev.stopPropagation();
+      if(isExt){ if(window.AgendaHooks && window.AgendaHooks.openEvent) window.AgendaHooks.openEvent(el.dataset.open); return; }
       if(selectMode){ toggleSelected(el.dataset.open); return; } // (éléments non déplaçables : déjà géré par wireSelectable)
       if(pendingClick){ return; } // second click of a dblclick - let dblclick handle it
       pendingClick = setTimeout(function(){
@@ -3047,7 +3056,7 @@ window.addEventListener('error', function(ev){
     });
     el.addEventListener('dblclick', function(ev){
       ev.stopPropagation();
-      if(selectMode) return;
+      if(selectMode || isExt) return;
       if(pendingClick){ clearTimeout(pendingClick); pendingClick = null; }
       var t = tasks.find(function(x){ return x.id === el.dataset.open; });
       if(t){ t.done = !t.done; saveTasks(); renderAll(); }
@@ -3455,6 +3464,7 @@ window.addEventListener('error', function(ev){
       if(s === null || isNaN(s)) return;
       busy.push([s - (t.travelBefore || 0), s + (t.duration || 30) + (t.travelAfter || 0)]);
     });
+    try{ if(window.AgendaHooks && window.AgendaHooks.busyForDate) busy = busy.concat(window.AgendaHooks.busyForDate(dateStr).blocks); }catch(e){}
     return busy;
   }
   function plannerSubtract(slot, busy){
@@ -4532,6 +4542,12 @@ window.addEventListener('error', function(ev){
           }
         } else if(taskCoversDate(t, ds)){ full = true; }
       });
+      try{
+        if(window.AgendaHooks && window.AgendaHooks.busyForDate){
+          var ext = window.AgendaHooks.busyForDate(ds);
+          blocks = blocks.concat(ext.blocks); if(ext.full) full = true;
+        }
+      }catch(e){}
       return { blocks:blocks, full:full };
     }
 
@@ -5354,6 +5370,13 @@ window.addEventListener('error', function(ev){
 
   /* ---------------- init ---------------- */
   function renderAll(){ renderList(); renderArchive(); renderCalendar(); renderPlannerBatches(); updateSelectionUi(); }
+  // Accès minimal pour les modules séparés (calendar-sync.js).
+  window.AgendaApp = {
+    tasks: function(){ return tasks; },
+    save: function(){ saveTasks(); },
+    render: function(){ renderAll(); },
+    category: function(key){ return getCategory(key); }
+  };
 
   function applyStartupParams(){
     try{
@@ -5393,5 +5416,6 @@ window.addEventListener('error', function(ev){
 <script src="admin.js"></script>
 <script src="premium.js"></script>
 <script src="analytics.js"></script>
+<script src="calendar-sync.js"></script>
 </body>
 </html>

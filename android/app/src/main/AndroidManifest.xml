@@ -48,6 +48,9 @@
 </application>
 <!--  Permissions  -->
 <uses-permission android:name="android.permission.INTERNET"/>
+<!-- Agendas du téléphone (calendar-sync.js) : demandé seulement si l'utilisateur active la synchronisation -->
+<uses-permission android:name="android.permission.READ_CALENDAR"/>
+<uses-permission android:name="android.permission.WRITE_CALENDAR"/>
 <!--  Notifications programmées (bip + vibration) même appli fermée et téléphone verrouillé  -->
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 <uses-permission android:name="android.permission.VIBRATE"/>

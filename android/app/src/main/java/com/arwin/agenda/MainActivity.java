@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
         // Local (non-npm) plugins must be registered manually, before the
         // bridge finishes initializing in super.onCreate().
         registerPlugin(WidgetBridgePlugin.class);
+        registerPlugin(CalendarSyncPlugin.class);
         super.onCreate(savedInstanceState);
         createTaskNotificationChannel();
         handlePaywallIntent(getIntent());
