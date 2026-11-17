@@ -24,6 +24,7 @@
     // Fantaisie
     { id:'bonbon',  name:'Bonbon',  group:'fun', mode:'light', free:true, p:'linear-gradient(135deg,#FFD6EA,#D9F5EC 55%,#E4DCFF)', s:'#FFFFFF', a:'#E2559A', i:'#3A2440', k:'#FCE1EF', color:'#E2559A', icon:'🍬' },
     { id:'soleil',  name:'Coucher de soleil', group:'fun', mode:'light', p:'linear-gradient(170deg,#FFE7C7,#FFD3CF 45%,#F7C6E0)', s:'#FFFBF8', a:'#FF6B4A', i:'#3A1F2B', k:'#FFE1D6', color:'#FF6B4A', icon:'🌅' },
+    { id:'nuages',  name:'Nuages',  group:'fun', mode:'light', p:'radial-gradient(ellipse 22px 10px at 35% 40%, #fff 60%, transparent 62%), radial-gradient(ellipse 26px 12px at 72% 62%, #fff 60%, transparent 62%), linear-gradient(180deg,#9FD0FF,#EAF4FF)', s:'#FFFFFF', a:'#3D8BFD', i:'#1F3550', k:'#DCEBFF', color:'#3D8BFD', icon:'☁️' },
     { id:'pop',     name:'Pop',     group:'fun', mode:'light', p:'radial-gradient(rgba(30,27,22,.18) 1px, transparent 1.2px) 0 0/8px 8px, #FFF4C2', s:'#FFFFFF', a:'#FF4D6D', i:'#1E1B16', k:'#FFE0E6', color:'#FF4D6D', icon:'💥' },
     { id:'pixel',   name:'Pixel',   group:'fun', free:true, mode:'light', p:'#E9F1E4', s:'#F8FBF5', a:'#3B5BDB', i:'#1B2A1E', k:'#DCE3FB', color:'#3B5BDB', icon:'👾' },
     { id:'neon',    name:'Néon',    group:'fun', mode:'dark', p:'#0B0B1A', s:'#141428', a:'#FF2BD6', i:'#F2F0FF', k:'#3A1238', color:'#0B0B1A', icon:'⚡' },
@@ -136,7 +137,7 @@
     var curFont = prefs.font;
     // Si le choix enregistré est verrouillé, on montre ce qui est réellement affiché.
     var e = effective();
-    var THEME_FONTS = { bonbon:"'Fredoka', sans-serif", galaxie:"'Fredoka', sans-serif", soleil:"'Righteous', sans-serif", pop:"'Righteous', sans-serif", neon:"'Righteous', sans-serif", pixel:"'Press Start 2P', monospace" };
+    var THEME_FONTS = { bonbon:"'Fredoka', sans-serif", galaxie:"'Fredoka', sans-serif", nuages:"'Fredoka', sans-serif", soleil:"'Righteous', sans-serif", pop:"'Righteous', sans-serif", neon:"'Righteous', sans-serif", pixel:"'Press Start 2P', monospace" };
     var themeFont = THEME_FONTS[e.theme.id] || '';
     if(!(byId(THEMES, cur) || {}).free && !isPrem) cur = e.theme.id === 'nuit' && prefs.theme === 'auto' ? 'auto' : 'creme';
     if(!(byId(FONTS, curFont) || {}).free && !isPrem) curFont = 'serif';

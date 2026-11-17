@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond du widget, thème « nuages » (voir www/themes.css) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#B5DAFF" android:endColor="#EAF4FF" android:type="linear" />
+    <corners android:radius="28dp" />
+    <stroke android:width="1dp" android:color="#CFE1F5" />
+</shape>

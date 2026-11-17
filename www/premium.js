@@ -42,7 +42,7 @@
       'Nouvelle rubrique « Apparence » dans les Réglages : thème Nuit, mode automatique et 7 thèmes Premium',
       'Choix de la police des titres (Premium)',
       'Les widgets suivent désormais le thème choisi',
-      'Nouveaux thèmes Fantaisie : Bonbon, Pixel et Galaxie (gratuits), Coucher de soleil, Pop et Néon'
+      'Nouveaux thèmes Fantaisie : Bonbon, Pixel et Galaxie (gratuits), Coucher de soleil, Nuages, Pop et Néon'
     ]},
     { version:'1.1.0', date:'novembre 2026', items:[
       'Nouvel abonnement Premium (version de démonstration, aucun paiement réel)',
@@ -220,7 +220,7 @@
       ['📚', 'Programme de révisions', 'Un planning par matière jusqu’à vos examens'],
       ['🧩', 'Grosses tâches découpées en sessions', 'Saisies une fois, réparties automatiquement'],
       ['🔄', 'Synchronisation dans les deux sens', 'Vos tâches aussi dans l\u2019agenda du téléphone'],
-      ['🎨', 'Thèmes et polices', '13 thèmes, des classiques aux plus fantaisistes'],
+      ['🎨', 'Thèmes et polices', '14 thèmes, des classiques aux plus fantaisistes'],
       ['📱', 'Tous les widgets', 'Jour, Semaine, Mois et Liste sur l’écran d’accueil'],
       ['💚', 'Soutenir un développeur indépendant', 'Et les prochaines mises à jour']
     ];

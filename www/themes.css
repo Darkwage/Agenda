@@ -167,6 +167,35 @@
   background-attachment:fixed;
 }
 
+
+:root[data-theme="nuages"]{
+  --paper:#EAF4FF; --paper-deep:#D8EAFC; --surface:#FFFFFF;
+  --ink:#1F3550; --ink-soft:#4F6A88; --ink-faint:#93A9C2;
+  --line:#CFE1F5; --line-soft:#E2EEFB;
+  --accent:#3D8BFD; --accent-dark:#2A74E0; --accent-ink:#FFFFFF; --accent-soft:#DCEBFF;
+  --radius-s:12px; --radius-m:18px; --radius-l:26px;
+  --font-display:'Fredoka', 'Inter', sans-serif;
+}
+/* Ciel bleu et nuages dessinés en CSS (groupes de cercles blancs flous). */
+:root[data-theme="nuages"] body{
+  background:
+    radial-gradient(ellipse 70px 34px at 14% 12%, rgba(255,255,255,.95) 60%, transparent 62%),
+    radial-gradient(circle 30px at 10% 9%, rgba(255,255,255,.95) 60%, transparent 62%),
+    radial-gradient(circle 38px at 17% 7%, rgba(255,255,255,.95) 60%, transparent 62%),
+    radial-gradient(ellipse 90px 40px at 82% 22%, rgba(255,255,255,.9) 60%, transparent 62%),
+    radial-gradient(circle 36px at 77% 18%, rgba(255,255,255,.9) 60%, transparent 62%),
+    radial-gradient(circle 46px at 86% 15%, rgba(255,255,255,.9) 60%, transparent 62%),
+    radial-gradient(ellipse 80px 36px at 30% 58%, rgba(255,255,255,.75) 60%, transparent 62%),
+    radial-gradient(circle 34px at 26% 54%, rgba(255,255,255,.75) 60%, transparent 62%),
+    radial-gradient(circle 42px at 34% 51%, rgba(255,255,255,.75) 60%, transparent 62%),
+    radial-gradient(ellipse 100px 44px at 88% 82%, rgba(255,255,255,.8) 60%, transparent 62%),
+    radial-gradient(circle 40px at 83% 78%, rgba(255,255,255,.8) 60%, transparent 62%),
+    radial-gradient(circle 52px at 92% 75%, rgba(255,255,255,.8) 60%, transparent 62%),
+    linear-gradient(180deg, #9FD0FF 0%, #C9E5FF 45%, #EAF4FF 100%);
+  background-attachment:fixed;
+}
+:root[data-theme="nuages"] .card{ box-shadow:0 2px 0 rgba(255,255,255,.7) inset, 0 14px 30px -18px rgba(61,139,253,.45); }
+
 /* Ajustements communs aux thèmes sombres */
 :root[data-mode="dark"]{
   color-scheme:dark;
@@ -227,3 +256,4 @@ body.is-premium .theme-lock{ display:none; }
 .font-choice.is-current{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
 .font-choice b{ display:block; font-size:18px; font-weight:600; line-height:1.1; }
 .font-choice span{ font-size:11px; color:var(--ink-soft); }
+:root[data-theme="nuages"] .view-tabs.mobile-only{ background:rgba(255,255,255,.6); }
