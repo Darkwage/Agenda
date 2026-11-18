@@ -24,7 +24,7 @@
     entitlementId: 'premium',            // identifiant du droit « Premium » défini dans RevenueCat
     playPackage: 'com.arwin.agenda',
     appVersion: '1.4.0',                 // à aligner sur versionName (android/app/build.gradle)
-    supportEmail: '',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
+    supportEmail: 'agendadmin@gmail.com',                    // ex. 'agenda.appli@exemple.fr' — adresse dédiée, pas la boîte perso
     trialDays: 14,
     termsUrl: '',                        // CGU (à rédiger avant la commercialisation)
     privacyUrl: '',                      // politique de confidentialité
