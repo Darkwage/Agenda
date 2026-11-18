@@ -59,7 +59,7 @@
       ['pw:restore', 'Restauration d’achat'], ['sub:manage', 'Gérer l’abonnement'], ['widget:locked-tap', 'Widget verrouillé touché']
     ]],
     ['Aide', [
-      ['help:tutorial', 'Tutoriel (rouvert)'], ['tutorial:done', 'Tutoriel terminé'], ['tutorial:skip', 'Tutoriel passé'], ['help:faq', 'Questions fréquentes'], ['help:report', 'Signaler un problème'], ['help:news', 'Nouveautés']
+      ['help:tutorial', 'Tutoriel (rouvert)'], ['help:alerts', 'Diagnostic du bip'], ['tutorial:done', 'Tutoriel terminé'], ['tutorial:skip', 'Tutoriel passé'], ['help:faq', 'Questions fréquentes'], ['help:report', 'Signaler un problème'], ['help:news', 'Nouveautés']
     ]]
   ];
   var LABELS = {};
@@ -283,6 +283,7 @@
           '<button type="button" class="btn-ghost" data-a="reset-trial">Réinitialiser l’essai</button>' +
           '<button type="button" class="btn-ghost" data-a="paywall">Voir la page d’abonnement</button>' +
           '<button type="button" class="btn-ghost" data-a="news">Voir les nouveautés</button>' +
+          '<button type="button" class="btn-ghost" data-a="alerts">Diagnostic du bip</button>' +
           '<button type="button" class="btn-ghost" data-a="reset-all">Tout remettre à zéro</button>' +
         '</div>' +
       '</section>' +
@@ -346,6 +347,7 @@
         }
       }
       else if(act === 'copy'){ copyStats(); }
+      else if(act === 'alerts'){ if(window.AgendaAlertCheck) window.AgendaAlertCheck.open(); }
       else if(act === 'remote-save'){
         try{
           localStorage.setItem(REMOTE_KEY, JSON.stringify({ url: $('admin-remote-url').value.trim(), token: $('admin-remote-token').value.trim() }));

@@ -3101,9 +3101,9 @@ window.addEventListener('error', function(ev){
   // after first creation, so this only needs to run once.
   function ensureTaskChangeChannel(nativeLN){
     // Supprime les anciens canaux (réglages figés par Android) avant d'utiliser le nouveau.
-    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes' }); }catch(e){}
-    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v2' }); }catch(e){}
-    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v3' }); }catch(e){}
+    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes' }).catch(function(){}); }catch(e){}
+    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v2' }).catch(function(){}); }catch(e){}
+    try{ nativeLN.deleteChannel({ id: 'agenda-task-changes-v3' }).catch(function(){}); }catch(e){}
     try{
       nativeLN.createChannel({
         id: TASK_CHANGE_CHANNEL,
@@ -5421,5 +5421,6 @@ window.addEventListener('error', function(ev){
 <script src="analytics.js"></script>
 <script src="calendar-sync.js"></script>
 <script src="tutorial.js"></script>
+<script src="alert-check.js"></script>
 </body>
 </html>

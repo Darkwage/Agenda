@@ -533,6 +533,7 @@
     ['J’ai changé de téléphone, comment retrouver Premium ?', 'Connectez-vous avec le même compte Google, puis Réglages › Mon abonnement › Restaurer mes achats. Pour vos tâches, utilisez Sauvegarde › Exporter puis Importer.'],
     ['Mes données sont-elles envoyées quelque part ?', 'Vos tâches, rendez-vous et anniversaires restent sur votre téléphone : ils ne sont jamais envoyés par l\u2019appli. La lecture de vos autres agendas et l\u2019envoi vers l\u2019agenda « Agenda (appli) » se font aussi sur le téléphone. Si vous l\u2019acceptez, seules des statistiques anonymes d\u2019utilisation (quelles fonctionnalités servent) sont partagées via Google Analytics pour Firebase.'],
     ['Mes rendez-vous Google n\u2019apparaissent pas', 'Réglages › Agendas du téléphone : activez « Afficher les rendez-vous… » et cochez les agendas voulus. Vérifiez aussi que l\u2019agenda est bien synchronisé sur le téléphone (appli Google Agenda).'],
+    ['Le bip ne sonne pas au début d\u2019une tâche', 'Ouvrez Filtres › « Le bip ne sonne pas ? » : l\u2019appli vérifie les réglages Android (mode silencieux, Ne pas déranger, économie de batterie…) et ouvre directement le bon réglage.'],
     ['Le widget ne se met pas à jour', 'Ouvrez l’appli une fois : le widget se resynchronise. Si le problème persiste, retirez-le et ajoutez-le à nouveau.']
   ];
 
